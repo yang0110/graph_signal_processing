@@ -1,5 +1,5 @@
 import numpy as np 
-import cvxpy as cp 
+#import cvxpy as cp 
 import matplotlib.pyplot as plt 
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.preprocessing import Normalizer
@@ -19,18 +19,18 @@ def ridge(x,y, _lambda, dimension):
 	beta=np.dot(temp2, np.dot(x.T,y)).T
 	return beta 
 
-def graph_ridge(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, alpha):
-	u=cp.Variable((user_num, dimension))
-	l_signal=cp.multiply(cp.matmul(u, item_f),mask)
-	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
-	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
-	cons=[u<=1, u>=0]
-	alp=cp.Parameter(nonneg=True)
-	alp.value=alpha 
-	problem=cp.Problem(cp.Minimize(loss+alp*reg))
-	problem.solve()
-	sol=u.value 
-	return sol 
+# def graph_ridge(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, alpha):
+# 	u=cp.Variable((user_num, dimension))
+# 	l_signal=cp.multiply(cp.matmul(u, item_f),mask)
+# 	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
+# 	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
+# 	cons=[u<=1, u>=0]
+# 	alp=cp.Parameter(nonneg=True)
+# 	alp.value=alpha 
+# 	problem=cp.Problem(cp.Minimize(loss+alp*reg))
+# 	problem.solve()
+# 	sol=u.value 
+# 	return sol 
 
 def generate_data(user_num, item_num, dimension, noise_scale):
 	user_f=np.random.normal(size=(user_num, dimension))# N*K
@@ -45,11 +45,11 @@ def generate_data(user_num, item_num, dimension, noise_scale):
 	return user_f, item_f, noisy_signal, true_adj, lap 
 
 
-os.chdir('Users/KGYaNG/Desktop/research/')
-timeRun = datetime.datetime.now().strftime('_%m_%d_%H_%M_%S') 
-newpath='/Users/KGYaNG/Desktop/research/'+'linear_signaL_results/'+str(timeRun)+'/'
-if not os.path.exists(newpath):
-	os.makedirs(newpath)
+# os.chdir('Users/KGYaNG/Desktop/research/')
+# timeRun = datetime.datetime.now().strftime('_%m_%d_%H_%M_%S') 
+# newpath='/Users/KGYaNG/Desktop/research/'+'linear_signaL_results/'+str(timeRun)+'/'
+# if not os.path.exists(newpath):
+# 	os.makedirs(newpath)
 
 
 user_num=50
@@ -69,10 +69,12 @@ item_list=[]
 beta_ols=np.zeros((user_num, dimension))
 beta_ridge=np.zeros((user_num, dimension))
 beta_graph_ridge=np.zeros((user_num, dimension))
+beta_gb=np.zeros((user_num, dimension))
 user_dict={a:[] for a in all_user}
 error_list_ols=[]
 error_list_ridge=[]
 error_list_graph_ridge=[]
+error_list_gb=[]
 
 
 
@@ -107,10 +109,33 @@ for i in range(iteration):
 		mask[ind, remove_list]=0
 	signal=signal*mask
 	sub_lap=lap[user_list][:,user_list]
-	u_f=graph_ridge(user_nb, item_nb, dimension, sub_lap, item_feature, mask, signal, _lambda)
-	beta_graph_ridge[user_list]=u_f.copy()
-	error_graph_ridge=np.linalg.norm(beta_graph_ridge-user_f)
-	error_list_graph_ridge.extend([error_graph_ridge])
+	# u_f=graph_ridge(user_nb, item_nb, dimension, sub_lap, item_feature, mask, signal, _lambda)
+	# beta_graph_ridge[user_list]=u_f.copy()
+	# error_graph_ridge=np.linalg.norm(beta_graph_ridge-user_f)
+	# error_list_graph_ridge.extend([error_graph_ridge])
+	P=np.ones((user_nb, item_nb))
+	u=np.zeros((user_nb, dimension))
+	sub_item_f=item_f[:, item_list]
+	for k in range(dimension):
+		P=P*(sub_item_f[k]!=0)
+		p=P[0].reshape((1,item_nb))
+		# update each atom
+		_sum=np.zeros((user_nb, item_nb))
+		for kk in range(dimension):
+			if kk==k:
+				pass 
+			else:
+				_sum+=np.dot(u[:,kk].reshape((user_nb, 1)), sub_item_f[kk,:].reshape((1, item_nb)))*mask
+			e=signal-_sum 
+		ep=e*P
+		v_r=(sub_item_f[k,:].reshape((1,item_nb))*p).T 
+		temp1=np.linalg.inv(np.linalg.norm(v_r)*np.identity(user_nb)+_lambda*sub_lap)
+		temp2=np.dot(ep, v_r)
+		u[:,k]=np.dot(temp1, temp2).ravel()
+	beta_gb[user_list]=u.copy()
+	error_gb=np.linalg.norm(beta_gb-user_f)
+	error_list_gb.extend([error_gb])
+
 
 
 
@@ -119,6 +144,7 @@ plt.figure()
 plt.plot(error_list_ols, label='OLS')
 plt.plot(error_list_ridge, label='Ridge')
 plt.plot(error_list_graph_ridge, label='Graph-ridge')
+plt.plot(error_list_gb, label='Grapg-ridge iteration')
 plt.legend(loc=0, fontsize=12)
 plt.ylabel('MSE')
 plt.xlabel('#of sample')
@@ -126,15 +152,31 @@ plt.show()
 
 
 
+# user=np.random.choice(all_user)
+# item=np.random.choice(all_item)
+# user_dict[user].extend([item])
+# item_sub_list=user_dict[user]
+# X=item_f.copy()
+# Y=noisy_signal.copy()
+# beta=np.random.normal(size=(user_num, dimension))
+# error1=np.linalg.norm(beta-user_f)
+# P=np.ones((user_num, item_num))
 
+# for i in range(dimension):
+# 	P=P*(X[i]!=0)
+# 	p=P[0].copy().reshape((1, item_num))
+# 	_sum=np.zeros((user_num, item_num))
+# 	for ii in range(dimension):
+# 		if ii==i:
+# 			pass 
+# 		else:
+# 			_sum+=np.dot(beta[:,ii].reshape((user_num, 1)), X[ii,:].reshape((1, item_num)))
+# 		e=Y-_sum 
+# 	ep=e*P
+# 	v_r=(X[i,:].reshape((1,item_num))*p).T 
+# 	temp1=np.linalg.inv(np.linalg.norm(v_r)*np.identity(user_num)+_lambda*lap)
+# 	temp2=np.dot(ep, v_r)
+# 	beta[:,i]=np.dot(temp1, temp2).ravel()
 
-
-
-
-
-
-
-
-
-
+# error2=np.linalg.norm(beta-user_f)
 
