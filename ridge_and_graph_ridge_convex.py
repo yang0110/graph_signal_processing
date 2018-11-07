@@ -6,7 +6,7 @@ from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
 import os 
 import datetime 
-def ols(x,y,dimension):
+def ols(x,y):
 	cov=np.dot(x.T,x)
 	temp2=np.linalg.inv(cov)
 	beta=np.dot(temp2, np.dot(x.T,y)).T
@@ -52,8 +52,8 @@ if not os.path.exists(newpath):
 	os.makedirs(newpath)
 
 
-user_num=20
-item_num=100
+user_num=50
+item_num=500
 dimension=10
 noise_scale=0.25
 user_f, item_f, noisy_signal, adj, lap=generate_data(user_num, item_num, dimension, noise_scale)
