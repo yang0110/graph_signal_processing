@@ -68,14 +68,14 @@ if not os.path.exists(newpath):
 	os.makedirs(newpath)
 
 
-user_num=20
+user_num=10
 item_num=100
 dimension=10
-noise_scale=0.25
+noise_scale=0.5
 user_f, item_f, noisy_signal, adj, lap=generate_data(user_num, item_num, dimension, noise_scale)
 
 _lambda=0.5
-iteration=500
+iteration=1000
 
 all_user=list(range(user_num))
 all_item=list(range(item_num))
@@ -98,7 +98,7 @@ error_list_graph_ridge_weighted=[]
 
 
 for i in range(iteration):
-	print('iteration i= ', i )
+	print('iteration i=', i )
 	user=np.random.choice(all_user)
 	item=np.random.choice(all_item)
 	user_dict[user].extend([item])
@@ -155,7 +155,7 @@ for i in range(iteration):
 	error_gb=np.linalg.norm(beta_gb-user_f)
 	error_list_gb.extend([error_gb])
 	## Graph ridge weighted
-	weights[user]=np.trace(noise_scale*np.linalg.inv(np.dot(X.T,X)+0.01*np.identity(dimension)))
+	weights[user]=1/np.trace(noise_scale*np.linalg.inv(np.dot(X.T,X)+0.01*np.identity(dimension)))
 	sub_weights=np.diag(weights[user_list])
 	gb_weight=graph_ridge_weighted(user_nb, item_nb, dimension, sub_weights, sub_lap, item_feature, mask, signal, _lambda)	
 	beta_graph_ridge_weighted[user_list]=gb_weight.copy()
@@ -172,7 +172,7 @@ plt.plot(error_list_graph_ridge_weighted, label='Graph_ridge_weighted convex')
 plt.legend(loc=0, fontsize=12)
 plt.ylabel('MSE', fontsize=12)
 plt.xlabel('#of sample', fontsize=12)
-plt.title('%s user, %s item'%(user_num, item_num))
+plt.title('%s user, %s item, %s noise'%(user_num, item_num, noise_scale))
 plt.savefig(newpath+'mse_error'+'.png', dpi=300)
 plt.show()
 
