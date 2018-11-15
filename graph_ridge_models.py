@@ -1,111 +1,32 @@
 import numpy as np 
-#import cvxpy as cp 
-import matplotlib.pyplot as plt 
+import cvxpy as cp 
+import matplotlib.pyplot as plt
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
 import os 
+os.chdir('/media/kaige/New SSD/Research/Code/GSP_code/')
 import datetime 
-def ols(x,y):
-	cov=np.dot(x.T,x)
-	temp2=np.linalg.inv(cov)
-	beta=np.dot(temp2, np.dot(x.T,y)).T
-	return beta 
-
-def ridge(x,y, _lambda, dimension):
-	cov=np.dot(x.T,x)
-	temp1=cov+_lambda*np.identity(dimension)
-	temp2=np.linalg.inv(temp1)
-	beta=np.dot(temp2, np.dot(x.T,y)).T
-	return beta 
-
-# Tikhonov
-def graph_ridge(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, alpha):
-	u=cp.Variable((user_num, dimension))
-	l_signal=cp.multiply(cp.matmul(u, item_f),mask)
-	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
-	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
-	cons=[u<=1, u>=0]
-	alp=cp.Parameter(nonneg=True)
-	alp.value=alpha 
-	problem=cp.Problem(cp.Minimize(loss+alp*reg))
-	problem.solve()
-	sol=u.value 
-	return sol 
-
-# Total variance
-def graph_ridge_TV(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, alpha):
-	lap=np.sqrt(lap)
-	u=cp.Variable((user_num, dimension))
-	l_signal=cp.multiply(cp.matmul(u, item_f),mask)
-	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
-	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
-	cons=[u<=1, u>=0]
-	alp=cp.Parameter(nonneg=True)
-	alp.value=alpha 
-	problem=cp.Problem(cp.Minimize(loss+alp*reg))
-	problem.solve()
-	sol=u.value 
-	return sol 
-
-def graph_ridge_weighted(user_num, item_num, dimension, weights, lap, item_f, mask, noisy_signal, alpha):
-	u=cp.Variable((user_num, dimension))
-	l_signal=cp.multiply(cp.matmul(u, item_f), mask)
-	loss1=noisy_signal-l_signal
-	loss=cp.sum([cp.quad_form(loss1[:,dd], weights) for dd in range(item_nb)])
-	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
-	cons=[u<=1, u>=0]
-	alp=cp.Parameter(nonneg=True)
-	alp.value=alpha 
-	problem=cp.Problem(cp.Minimize(loss+alp*reg))
-	problem.solve()
-	sol=u.value 
-	return sol 
-
-
-def generate_data(user_num, item_num, dimension, noise_scale):
-	user_f=np.random.normal(size=(user_num, dimension))# N*K
-	user_f=Normalizer().fit_transform(user_f)
-	item_f=np.random.normal(size=(dimension, item_num))# K*M
-	item_f=Normalizer().fit_transform(item_f.T).T
-	signal=np.dot(user_f, item_f)# N*M 
-	noisy_signal=signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
-	true_adj=rbf_kernel(user_f)
-	np.fill_diagonal(true_adj, 0)
-	lap=csgraph.laplacian(true_adj, normed=False)
-	return user_f, item_f, noisy_signal, true_adj, lap 
-
-def generate_graph_and_atoms(user_num, item_num, dimension, sigma):
-	uf=np.random.normal(size=(user_num, dimension))
-	uf=Normalizer().fit_transform(uf)
-	item_f=np.random.normal(size=(dimension, item_num))# K*M
-	item_f=Normalizer().fit_transform(item_f.T).T
-	adj=rbf_kernel(uf)
-	np.fill_diagonal(adj,0)
-	lap=csgraph.laplacian(adj, normed=False)
-	cov=lap+np.identity(user_num)*(sigma)**2
-	U=np.random.multivariate_normal(mean=np.zeros(user_num), cov=cov, size=dimension)
-	U=Normalizer().fit_transform(U).T
-	signal=np.dot(U, item_f)# N*M 
-	noisy_signal=signal+np.random.normal(size=(user_num, item_num), scale=sigma)
-	return U, item_f, noisy_signal, adj, lap
+import networkx as nx
+from utils import *
 
 
 timeRun = datetime.datetime.now().strftime('_%m_%d_%H_%M_%S') 
-newpath='/media/kaige/New SSD/Research/Results/'+'linear_signaL_results/'+str(timeRun)+'_'
+newpath='/media/kaige/New SSD/Research/Results/linear_signal_results/'
 if not os.path.exists(newpath):
 	os.makedirs(newpath)
 
 
-user_num=20
+user_num=10
 item_num=100
 dimension=10
-noise_scale=0.1
-user_f, item_f, noisy_signal, adj, lap=generate_graph_and_atoms(user_num, item_num, dimension, noise_scale)
+noise_scale=0.25
 
-_lambda=0.5
-g_lambda=0.5
-iteration=1500
+user_f,item_f,noisy_signal,adj,lap=generate_graph_and_atom(user_num, item_num, dimension, noise_scale)
+
+_lambda=0.1
+g_lambda=0.1
+iteration=1000
 
 all_user=list(range(user_num))
 all_item=list(range(item_num))
@@ -115,7 +36,6 @@ item_list=[]
 beta_ols=np.zeros((user_num, dimension))
 beta_ridge=np.zeros((user_num, dimension))
 beta_graph_ridge=np.zeros((user_num, dimension))
-#beta_graph_ridge_TV=np.zeros((user_num, dimension))
 beta_gb=np.zeros((user_num, dimension))
 beta_graph_ridge_weighted=np.zeros((user_num, dimension))
 weights=np.zeros(user_num)
@@ -123,7 +43,6 @@ user_dict={a:[] for a in all_user}
 error_list_ols=[]
 error_list_ridge=[]
 error_list_graph_ridge=[]
-#error_list_graph_ridge_TV=[]
 error_list_gb=[]
 error_list_graph_ridge_weighted=[]
 
@@ -133,12 +52,8 @@ for i in range(iteration):
 	print('iteration i=', i )
 	if i<user_num:
 		user=all_user[i]
-		_lambda=0.01
-		g_lambda=_lambda
 	else:
 		user=np.random.choice(all_user)
-		_lambda=0.5
-		g_lambda=1
 	item=np.random.choice(all_item)
 	user_dict[user].extend([item])
 	item_sub_list=user_dict[user]
@@ -168,18 +83,11 @@ for i in range(iteration):
 		mask[ind, remove_list]=0
 	signal=signal*mask
 	sub_lap=lap[user_list][:,user_list]
-	#print('sub_lap', sub_lap)
-	#a=np.sqrt(sub_lap)
-	#print('np.sqrt(sub_lap',a)
 	print('sub_lap.size', sub_lap.shape)
 	u_f=graph_ridge(user_nb, item_nb, dimension, sub_lap, item_feature, mask, signal, g_lambda)
-	# #u_f_tv=graph_ridge_TV(user_nb, item_nb, dimension, sub_lap, item_feature, mask, signal, g_lambda)
 	beta_graph_ridge[user_list]=u_f.copy()
 	error_graph_ridge=np.linalg.norm(beta_graph_ridge-user_f)
 	error_list_graph_ridge.extend([error_graph_ridge])
-	beta_graph_ridge_TV[user_list]=u_f_tv.copy()
-	error_graph_ridge_tv=np.linalg.norm(beta_graph_ridge_TV-user_f)
-	error_list_graph_ridge_TV.extend([error_graph_ridge_tv])
 	P=np.ones((user_nb, item_nb))
 	u=np.zeros((user_nb, dimension))
 	sub_item_f=item_f[:, item_list]
@@ -216,14 +124,14 @@ plt.plot(error_list_ols, label='OLS')
 plt.plot(error_list_ridge, label='Ridge')
 plt.plot(error_list_graph_ridge,marker='s', markevery=0.1,label='Graph-ridge TiK (convex)')
 plt.plot(error_list_gb, label='Graph-ridge TiK (iterative)')
-#plt.plot(error_list_graph_ridge_TV, marker='|', markevery=0.1, label='Graph-ridge TV (convex)')
 plt.plot(error_list_graph_ridge_weighted, marker='*', markevery=0.1, label='Graph_ridge_weighted Tik (convex)')
 plt.legend(loc=0, fontsize=12)
 plt.ylabel('MSE (Leanring Error)', fontsize=12)
 plt.xlabel('#of sample (Size of traing set)', fontsize=12)
-plt.title('%s user, %s alpha, %s noise'%(user_num, g_lambda, noise_scale))
-plt.savefig(newpath+'mse_error'+'.png', dpi=300)
+plt.title('%s user, %s alpha,%s g_lambda, %s noise'%(user_num, _lambda, g_lambda, noise_scale))
+plt.savefig(newpath+str(timeRun)+'_'+'mse_error'+'.png', dpi=300)
 plt.show()
+
 
 
 
@@ -232,11 +140,10 @@ plt.plot(error_list_ols[3*user_num:], label='OLS')
 plt.plot(error_list_ridge[3*user_num:], label='Ridge')
 plt.plot(error_list_graph_ridge[3*user_num:], marker='s',markevery=0.1, label='Graph-ridge Tik (convex)')
 plt.plot(error_list_gb[3*user_num:], label='Graph-ridge Tik (iterative)')
-#plt.plot(error_list_graph_ridge_TV[3*user_num:], marker='|', markevery=0.1, label='Graph-ridge TV (convex)')
 plt.plot(error_list_graph_ridge_weighted[3*user_num:], marker='*', markevery=0.1, label='Graph-ridge-weighted Tik  (convex)')
 plt.legend(loc=0, fontsize=10)
 plt.ylabel('MSE (Leanring Error)', fontsize=12)
 plt.xlabel('#of sample (Size of traing set)', fontsize=12)
-plt.title('%s user, %s alpha, %s noise'%(user_num, g_lambda, noise_scale))
-plt.savefig(newpath+'mse_error_zoom_in'+'.png', dpi=300)
+plt.title('%s user, %s alpha,%s g_lambda, %s noise'%(user_num, _lambda, g_lambda, noise_scale))
+plt.savefig(newpath+str(timeRun)+'_'+'mse_error_zoom_in'+'.png', dpi=300)
 plt.show()
