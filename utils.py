@@ -78,15 +78,27 @@ def generate_data(user_num, item_num, dimension, noise_scale):
 	return user_f, item_f, noisy_signal, true_adj, lap 
 	
 def generate_ba_graph(node_num, seed=2018):
-	graph=nx.barabasi_albert_graph(node_num, m=1, seed=seed)
+	graph=nx.barabasi_albert_graph(node_num, m=5, seed=seed)
 	adj_matrix=nx.to_numpy_array(graph)
 	np.fill_diagonal(adj_matrix,0)
 	lap=csgraph.laplacian(adj_matrix, normed=False)
 	return adj_matrix, lap
 
-def generate_graph_and_atom(user_num, item_num, dimension, noise_scale):
-	adj, lap=generate_ba_graph(user_num)
-	p_lap=np.linalg.pinv(lap)
+def generate_erdos_renyi_graph(user_num, p):
+	graph=nx.erdos_renyi_graph(user_num,p=p)
+	adj=nx.to_numpy_array(graph)
+	np.fill_diagonal(adj,0)
+	return adj 
+
+
+
+def generate_graph_and_atom(user_num, item_num, dimension, noise_scale, p):
+	mask=generate_erdos_renyi_graph(user_num, p=p)
+	mask=np.fmax(mask, mask.T)
+	adj=np.random.uniform(size=(user_num, user_num))
+	adj=np.fmax(adj, adj.T)
+	adj=adj*mask
+	lap=csgraph.laplacian(adj, normed=False)
 	cov=np.linalg.pinv(lap)+np.identity(user_num)
 	U=np.random.multivariate_normal(mean=np.zeros(user_num), cov=cov, size=dimension).T
 	item_f=np.random.normal(size=(dimension, item_num))# K*M
@@ -95,3 +107,25 @@ def generate_graph_and_atom(user_num, item_num, dimension, noise_scale):
 	signal=np.dot(U, item_f)# N*M 
 	noisy_signal=signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
 	return U, item_f, noisy_signal, adj, lap 
+
+
+
+
+def create_networkx_graph(node_num, adj_matrix):
+	G=nx.Graph()
+	G.add_nodes_from(list(range(node_num)))
+	for i in range(node_num):
+		for j in range(node_num):
+			if adj_matrix[i,j]!=0:
+				G.add_edge(i,j,weight=adj_matrix[i,j])
+			else:
+				pass
+	edge_num=G.number_of_edges()
+	return G, edge_num
+
+
+
+
+
+
+
