@@ -17,15 +17,17 @@ newpath='../results/'
 
 
 
-user_num=10
+user_num=20
 item_num=100
 dimension=10
-noise_scale=0.1
+noise_scale=1.0
 p=0.8
-user_f,item_f,noisy_signal,adj,lap=generate_graph_and_atom(user_num, item_num, dimension, noise_scale, p)
+# user_f,item_f,pos,noisy_signal,adj,lap=generate_random_graph(user_num, item_num, dimension, noise_scale)
+user_f,item_f,pos,noisy_signal,adj,lap=generate_GMRF(user_num, item_num, dimension, noise_scale)
+
 
 _lambda=0.1
-g_lambda=0.05
+g_lambda=2
 iteration=1000
 
 all_user=list(range(user_num))
@@ -131,7 +133,7 @@ plt.figure(figsize=(8,5))
 plt.plot(error_list_ols, label='OLS')
 plt.plot(error_list_ridge, label='Ridge')
 plt.plot(error_list_graph_ridge,marker='s', markevery=0.1,label='Graph-ridge TiK (convex)')
-plt.plot(error_list_gb, label='Graph-ridge TiK (iterative)')
+plt.plot(error_list_gb[user_num:], label='Graph-ridge Tik (iterative)')
 plt.legend(loc=0, fontsize=12)
 plt.ylabel('MSE (Leanring Error)', fontsize=12)
 plt.xlabel('#of sample (Size of traing set)', fontsize=12)
@@ -142,9 +144,9 @@ plt.show()
 
 
 plt.figure(figsize=(8,5))
-plt.plot(error_list_ols[3*user_num:], label='OLS')
-plt.plot(error_list_ridge[3*user_num:], label='Ridge')
-plt.plot(error_list_graph_ridge[3*user_num:], marker='s',markevery=0.1, label='Graph-ridge Tik (convex)')
+plt.plot(error_list_ols[user_num:], label='OLS')
+plt.plot(error_list_ridge[user_num:], label='Ridge')
+plt.plot(error_list_graph_ridge[user_num:], marker='s',markevery=0.1, label='Graph-ridge Tik (convex)')
 plt.plot(error_list_gb[3*user_num:], label='Graph-ridge Tik (iterative)')
 plt.legend(loc=0, fontsize=10)
 plt.ylabel('MSE (Leanring Error)', fontsize=12)
@@ -154,13 +156,26 @@ plt.savefig(newpath+str(timeRun)+'_'+'mse_error_zoom_in'+'.png', dpi=100)
 plt.show()
 
 
-graph, edge_num=create_networkx_graph(user_num, adj)
-edge_weight=adj[np.triu_indices(user_num,1)]
-edge_color=edge_weight[edge_weight>0]
-pos=user_f[:,:2]
-plt.figure(figsize=(5,5))
-nodes=nx.draw_networkx_nodes(graph, pos, node_size=50, cmap=plt.cm.jet)
-edges=nx.draw_networkx_edges(graph, pos, width=1.0, alpha=0.1, edge_color=edge_color, edge_cmap=plt.cm.Blues)
-plt.axis('off')
-plt.savefig(newpath+str(timeRun)+'_'+'graph_user_num_%s_egde_num_%s'%(user_num, edge_num)+'.png', dpi=100)
-plt.show()
+# graph, edge_num=create_networkx_graph(user_num, adj)
+# edge_weight=adj[np.triu_indices(user_num,1)]
+# edge_color=edge_weight[edge_weight>0]
+# plt.figure(figsize=(5,5))
+# nodes=nx.draw_networkx_nodes(graph, pos, node_size=50, cmap=plt.cm.jet)
+# edges=nx.draw_networkx_edges(graph, pos, width=1.0, alpha=0.1, edge_color=edge_color, edge_cmap=plt.cm.Blues)
+# plt.axis('off')
+# plt.savefig(newpath+str(timeRun)+'_'+'graph_user_num_%s_egde_num_%s'%(user_num, edge_num)+'.png', dpi=100)
+# plt.show()
+
+
+# for dim in range(dimension):
+# 	plt.figure(figsize=(5,5))
+# 	nodes=nx.draw_networkx_nodes(graph, pos, node_size=50, node_color=user_f[:,dim], cmap=plt.cm.jet)
+# 	edges=nx.draw_networkx_edges(graph, pos, width=1.0, alpha=0.1, edge_color=edge_color, edge_cmap=plt.cm.Blues)
+# 	plt.axis('off')
+# 	plt.savefig(newpath+str(timeRun)+'user_feature_smoothness_dimension_%s'%(dim)+'.png', dpi=100)
+# 	plt.show()
+
+
+
+
+
