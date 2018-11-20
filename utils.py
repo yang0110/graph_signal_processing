@@ -35,6 +35,39 @@ def graph_ridge(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, 
 	sol=u.value 
 	return sol 
 
+
+def graph_ridge_iterative_model(item_f, noisy_signal, lap, beta_gb, dimension, user_list, item_list, user_dict, g_lambda):
+	user_nb=len(user_list)
+	item_nb=len(item_list)
+	mask=np.ones((user_nb, item_nb))
+	for ind, j in enumerate(user_list):
+		remove_list=[x for x, xx in enumerate(item_list) if xx not in user_dict[j]]
+		mask[ind, remove_list]=0
+	signal=noisy_signal[user_list][:, item_list]
+	signal=signal*mask
+	sub_lap=lap[user_list][:,user_list]
+	u=beta_gb[user_list].copy()
+	sub_item_f=item_f[:, item_list]
+	#update each atom
+	for k in range(dimension):
+		P=np.ones((user_nb, item_nb))
+		P=P*(sub_item_f[k]!=0)
+		p=P[0].reshape((1,item_nb))
+		_sum=np.zeros((user_nb, item_nb))
+		for kk in range(dimension):
+			if kk==k:
+				pass 
+			else:
+				_sum+=np.dot(u[:,kk].reshape((user_nb, 1)), sub_item_f[kk,:].reshape((1, item_nb)))
+		e=signal-_sum*mask
+		ep=e*P
+		v_r=(sub_item_f[k,:].reshape((1,item_nb))*p).T 
+		temp1=np.linalg.inv(np.dot(v_r.T, v_r)*np.identity(user_nb)+g_lambda*sub_lap)
+		temp2=np.dot(ep, v_r)
+		u[:,k]=np.dot(temp1, temp2).ravel()
+	beta_gb[user_list]=u.copy()
+	return beta_gb
+
 # Total variance
 def graph_ridge_TV(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, alpha):
 	lap=np.sqrt(lap)
@@ -114,7 +147,7 @@ def generate_graph_and_atom(user_num, item_num, dimension, noise_scale, p):
 def generate_artificial_graph(user_num):
 	pos=np.random.uniform(size=(user_num, 2))
 	adj=rbf_kernel(pos)
-	adj[adj<0.75]=0
+	# adj[adj<0.75]=0
 	np.fill_diagonal(adj,0)
 	lap=csgraph.laplacian(adj, normed=True)
 	lap=normalized_trace(lap, user_num)
@@ -133,7 +166,7 @@ def create_networkx_graph(node_num, adj_matrix):
 	edge_num=G.number_of_edges()
 	return G, edge_num
 
-def generate_random_graph(user_num, item_num, dimension, noise_scale):
+def generate_random_graph(user_num, item_num, dimension):
 	adj, lap, pos=generate_artificial_graph(user_num)
 	b=np.random.uniform(size=(dimension, 2))
 	user_f=np.dot(pos, b.T)
@@ -141,12 +174,11 @@ def generate_random_graph(user_num, item_num, dimension, noise_scale):
 	item_f=np.random.uniform(size=(item_num, dimension))
 	itme_f=Normalizer().fit_transform(item_f)
 	signal=np.dot(user_f, item_f.T)
-	noisy_signal=signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
-	return user_f, item_f.T, pos, noisy_signal, adj, lap 
+	return user_f, item_f.T, pos, signal, adj, lap 
 
 
 
-def generate_GMRF(user_num, item_num, dimension, noise_scale):
+def generate_GMRF(user_num, item_num, dimension):
 	adj, lap, pos=generate_artificial_graph(user_num)
 	cov=np.linalg.pinv(lap)+0.1*np.identity(user_num)
 	cov=np.linalg.pinv(lap)
@@ -154,8 +186,7 @@ def generate_GMRF(user_num, item_num, dimension, noise_scale):
 	item_f=np.random.uniform(size=(item_num, dimension))
 	itme_f=Normalizer().fit_transform(item_f)
 	signal=np.dot(user_f, item_f.T)
-	noisy_signal=signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)	
-	return user_f, item_f.T, pos, noisy_signal, adj, lap
+	return user_f, item_f.T, pos, signal, adj, lap
 
 
 
