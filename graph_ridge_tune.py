@@ -22,13 +22,12 @@ item_num=100
 dimension=10
 noise_scale=0.1
 p=0.8
-user_f,item_f,pos,noisy_signal,adj,lap=generate_random_graph(user_num, item_num, 
-	dimension, noise_scale)
-# user_f,item_f,pos,noisy_signal,adj,lap=generate_GMRF(user_num, item_num, dimension, noise_scale)
+user_f,item_f,pos,signal,adj,lap=generate_random_graph(user_num, item_num, 
+		dimension)
+# user_f,item_f,pos,signal,adj,lap=generate_GMRF(user_num, item_num, dimension)
+noisy_signal=signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
 
-g_lam_list=np.arange(1.6, 3, 0.2)
 iteration=100
-
 all_user=list(range(user_num))
 all_item=list(range(item_num))
 user_list=[]
@@ -74,11 +73,10 @@ for i in range(iteration):
 		signal=signal*mask
 		sub_lap=lap[user_list][:,user_list]
 		print('sub_lap.size', sub_lap.shape)
-		for g_lambda in g_lam_list:
-			u_f=graph_ridge(user_nb, item_nb, dimension, sub_lap, item_feature, mask, signal, g_lambda)
-			beta_graph_ridge[user_list]=u_f.copy()
-			error_graph_ridge=np.linalg.norm(beta_graph_ridge-user_f)
-			error_list_graph_ridge[g_lambda].extend([error_graph_ridge])
+		u_f=graph_ridge(user_nb, item_nb, dimension, sub_lap, item_feature, mask, signal, g_lambda)
+		beta_graph_ridge[user_list]=u_f.copy()
+		error_graph_ridge=np.linalg.norm(beta_graph_ridge-user_f)
+		error_list_graph_ridge.extend([error_graph_ridge])
 
 plt.figure()
 for l in g_lam_list:

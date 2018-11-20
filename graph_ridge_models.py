@@ -11,25 +11,21 @@ import datetime
 import networkx as nx
 from utils import *
 
-
 timeRun = datetime.datetime.now().strftime('_%m_%d_%H_%M_%S') 
 newpath='../results/'
-
-
 
 user_num=20
 item_num=100
 dimension=10
 noise_list=[0.1, 0.25, 0.5]
-user_f,item_f,pos,signal,adj,lap=generate_random_graph(user_num, item_num, 
-		dimension)
-# user_f,item_f,pos,signal,adj,lap=generate_GMRF(user_num, item_num, dimension, noise_scale)
+user_f,item_f,pos,ori_signal,adj,lap=generate_random_graph(user_num, item_num, dimension)
+#user_f,item_f,pos,ori_signal,adj,lap=generate_GMRF(user_num, item_num, dimension)
 for noise_scale in noise_list:
 	print('noise scale=%s'%(noise_scale))
-	noisy_signal=signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
+	noisy_signal=ori_signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
 	_lambda=0.2
-	g_lambda=0.2
-	iteration=1000
+	g_lambda=_lambda
+	iteration=2000
 
 	all_user=list(range(user_num))
 	all_item=list(range(item_num))
@@ -41,6 +37,7 @@ for noise_scale in noise_list:
 	beta_graph_ridge=np.zeros((user_num, dimension))
 	beta_gb=np.zeros((user_num, dimension))
 	beta_graph_ridge_weighted=np.zeros((user_num, dimension))
+
 	weights=np.zeros(user_num)
 	user_dict={a:[] for a in all_user}
 	error_list_ols=[]
@@ -53,6 +50,7 @@ for noise_scale in noise_list:
 
 	for i in range(iteration):
 		print('iteration i=', i )
+		print('noise scale=', noise_scale)
 		if i<user_num:
 			user=all_user[i]
 			item=np.random.choice(all_item)
@@ -104,24 +102,21 @@ for noise_scale in noise_list:
 			error_gb=np.linalg.norm(beta_gb-user_f)
 			error_list_gb.extend([error_gb])
 			# Graph ridge weighted
-			weights[user]=1/np.trace(noise_scale*np.linalg.inv(np.dot(X.T,X)+0.01*np.identity(dimension)))
-			sub_weights=np.diag(weights[user_list])
-			gb_weight=graph_ridge_weighted(user_nb, item_nb, dimension, sub_weights, sub_lap, item_feature, mask, signal, g_lambda)
-			beta_graph_ridge_weighted[user_list]=gb_weight.copy()
-			error_graph_ridge_weighted=np.linalg.norm(beta_graph_ridge_weighted-user_f)
-			error_list_graph_ridge_weighted.extend([error_graph_ridge_weighted])
-
+			# weights[user]=1/np.trace(noise_scale*np.linalg.inv(np.dot(X.T,X)+0.01*np.identity(dimension)))
+			# sub_weights=np.diag(weights[user_list])
+			# gb_weight=graph_ridge_weighted(user_nb, item_nb, dimension, sub_weights, sub_lap, sub_item_f, mask, signal, g_lambda)
+			# beta_graph_ridge_weighted[user_list]=gb_weight.copy()
+			# error_graph_ridge_weighted=np.linalg.norm(beta_graph_ridge_weighted-user_f)
+			# error_list_graph_ridge_weighted.extend([error_graph_ridge_weighted])
 
 	plt.figure(figsize=(8,5))
 	plt.plot(error_list_ols, label='OLS')
 	plt.plot(error_list_ridge, label='Ridge')
-	plt.plot(error_list_graph_ridge,marker='s', markevery=0.1,label='Graph-ridge TiK (convex)')
-	plt.plot(error_list_gb, label='Graph-ridge Tik (iterative)')
-	plt.plot(error_list_graph_ridge_weighted, label='Graph-ridge weighted (convex)')
+	plt.plot(error_list_graph_ridge,marker='s', markevery=0.1,label='Graph-ridge (convex)')
+	plt.plot(error_list_gb, label='Graph-ridge (iterative)')
 	plt.legend(loc=0, fontsize=12)
-	plt.ylabel('MSE (Leanring Error)', fontsize=12)
-	plt.xlabel('#of sample (Size of traing set)', fontsize=12)
-	plt.title('%s user, %s alpha,%s g_lambda, %s noise'%(user_num, _lambda, g_lambda, noise_scale))
+	plt.ylabel('MSE (Error)', fontsize=12)
+	plt.xlabel('#of sample (Size of training set)', fontsize=12)
 	plt.savefig(newpath+str(timeRun)+'_'+'mse_error_user_num_%s_noise_%s'%(user_num, noise_scale)+'.png', dpi=100)
 	plt.show()
 
@@ -132,11 +127,9 @@ for noise_scale in noise_list:
 	plt.plot(error_list_ridge[user_num:], label='Ridge')
 	plt.plot(error_list_graph_ridge[user_num:], marker='s',markevery=0.1, label='Graph-ridge Tik (convex)')
 	plt.plot(error_list_gb[user_num:], label='Graph-ridge Tik (iterative)')
-	plt.plot(error_list_graph_ridge_weighted, label='Graph-ridge weighted (convex)')
 	plt.legend(loc=0, fontsize=10)
 	plt.ylabel('MSE (Leanring Error)', fontsize=12)
 	plt.xlabel('#of sample (Size of traing set)', fontsize=12)
-	plt.title('%s user, %s alpha,%s g_lambda, %s noise'%(user_num, _lambda, g_lambda, noise_scale))
 	plt.savefig(newpath+str(timeRun)+'_'+'mse_error_user_num_%s_noise_%s_zoom_in'%(user_num, noise_scale)+'.png', dpi=100)	
 	plt.show()
 
