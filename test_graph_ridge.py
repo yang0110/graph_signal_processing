@@ -14,7 +14,7 @@ from utils import *
 timeRun = datetime.datetime.now().strftime('_%m_%d_%H_%M_%S') 
 newpath='../results/'
 
-user_num=20
+user_num=50
 item_num=100
 dimension=10
 noise_list=[0.1, 0.25, 0.5]

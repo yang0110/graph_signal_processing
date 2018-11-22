@@ -13,11 +13,11 @@ from utils import *
 
 timeRun = datetime.datetime.now().strftime('_%m_%d_%H_%M_%S') 
 newpath='../results/'
-user_num=20
+user_num=50
 item_num=100
 dimension=10
-user_f,item_f,pos,ori_signal,adj,lap=generate_random_graph(user_num, item_num, dimension)
-#user_f,item_f,pos,ori_signal,adj,lap=generate_GMRF(user_num, item_num, dimension)
+# user_f,item_f,pos,ori_signal,adj,lap=generate_random_graph(user_num, item_num, dimension)
+user_f,item_f,pos,ori_signal,adj,lap=generate_GMRF(user_num, item_num, dimension)
 error_list={}
 noise_list=[0.1, 0.25, 0.5]
 for noise_scale in noise_list:
@@ -26,7 +26,7 @@ for noise_scale in noise_list:
 	noisy_signal=ori_signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
 
 	g_lambda=0.2
-	iteration=2000
+	iteration=5000
 
 	all_user=list(range(user_num))
 	all_item=list(range(item_num))

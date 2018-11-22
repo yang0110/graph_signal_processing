@@ -149,7 +149,7 @@ def generate_artificial_graph(user_num):
 	adj=rbf_kernel(pos)
 	# adj[adj<0.75]=0
 	np.fill_diagonal(adj,0)
-	lap=csgraph.laplacian(adj, normed=True)
+	lap=csgraph.laplacian(adj, normed=False)
 	lap=normalized_trace(lap, user_num)
 	return adj, lap, pos
 
@@ -180,9 +180,10 @@ def generate_random_graph(user_num, item_num, dimension):
 
 def generate_GMRF(user_num, item_num, dimension):
 	adj, lap, pos=generate_artificial_graph(user_num)
-	cov=np.linalg.pinv(lap)+0.1*np.identity(user_num)
+	#cov=np.linalg.pinv(lap)+0.1*np.identity(user_num)
 	cov=np.linalg.pinv(lap)
 	user_f=np.random.multivariate_normal(mean=np.zeros(user_num), cov=cov, size=dimension).T
+	user_f=Normalizer().fit_transform(user_f)
 	item_f=np.random.uniform(size=(item_num, dimension))
 	itme_f=Normalizer().fit_transform(item_f)
 	signal=np.dot(user_f, item_f.T)
