@@ -180,12 +180,11 @@ def generate_random_graph(user_num, item_num, dimension):
 
 def generate_GMRF(user_num, item_num, dimension):
 	adj, lap, pos=generate_artificial_graph(user_num)
-	#cov=np.linalg.pinv(lap)+0.1*np.identity(user_num)
 	cov=np.linalg.pinv(lap)
 	user_f=np.random.multivariate_normal(mean=np.zeros(user_num), cov=cov, size=dimension).T
-	user_f=Normalizer().fit_transform(user_f)
+	#user_f=Normalizer().fit_transform(user_f)
 	item_f=np.random.uniform(size=(item_num, dimension))
-	itme_f=Normalizer().fit_transform(item_f)
+	#itme_f=Normalizer().fit_transform(item_f)
 	signal=np.dot(user_f, item_f.T)
 	return user_f, item_f.T, pos, signal, adj, lap
 
@@ -199,3 +198,37 @@ def normalized_trace(matrix, target_trace):
 
 
 
+# item_list=list(np.unique(item_list))
+# user_nb=len(user_list)
+# print('served user number', user_nb)
+# item_nb=len(item_list)
+# signal=noisy_signal[user_list][:,item_list]
+# mask=np.ones((user_nb, item_nb))
+# for ind, j in enumerate(user_list):
+# 	remove_list=[x for x, xx in enumerate(item_list) if xx not in user_dict[j]]
+# 	mask[ind, remove_list]=0
+# signal=signal*mask
+# sub_lap=lap[user_list][:,user_list]
+# print('sub_lap.size', sub_lap.shape)
+# u=beta_gb[user_list].copy()
+# sub_item_f=item_f[:, item_list]
+# #update each atom
+# for k in range(dimension):
+# 	P=np.ones((user_nb, item_nb))
+# 	P=P*(sub_item_f[k]!=0)
+# 	p=P[0].reshape((1,item_nb))
+# 	_sum=np.zeros((user_nb, item_nb))
+# 	for kk in range(dimension):
+# 		if kk==k:
+# 			pass 
+# 		else:
+# 			_sum+=np.dot(u[:,kk].reshape((user_nb, 1)), sub_item_f[kk,:].reshape((1, item_nb)))
+# 	e=signal-_sum*mask
+# 	ep=e*P
+# 	v_r=(sub_item_f[k,:].reshape((1,item_nb))*p).T 
+# 	temp1=np.linalg.inv(np.dot(v_r.T, v_r)*np.identity(user_nb)+g_lambda*sub_lap)
+# 	temp2=np.dot(ep, v_r)
+# 	u[:,k]=np.dot(temp1, temp2).ravel()
+# beta_gb[user_list]=u.copy()
+# error_gb=np.linalg.norm(beta_gb-user_f)
+# error_list_gb.extend([error_gb])

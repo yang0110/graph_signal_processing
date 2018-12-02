@@ -26,8 +26,8 @@ error_list_graph_ridge={noise:[] for noise in noise_list}
 for noise_scale in noise_list:
 	print('noise scale=%s'%(noise_scale))
 	noisy_signal=ori_signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
-	g_lambda=0.2
-	iteration=2000
+	g_lambda=2
+	iteration=5000
 
 	all_user=list(range(user_num))
 	all_item=list(range(item_num))

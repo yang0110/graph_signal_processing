@@ -21,13 +21,12 @@ noise_list=[0.1, 0.25, 0.5]
 #user_f,item_f,pos,ori_signal,adj,lap=generate_random_graph(user_num, item_num, dimension)
 user_f,item_f,pos,ori_signal,adj,lap=generate_GMRF(user_num, item_num, dimension)
 
-
 error_list_ridge={noise:[] for noise in noise_list}
 for noise_scale in noise_list:
 	print('noise scale=%s'%(noise_scale))
 	noisy_signal=ori_signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
 	_lambda=0.2
-	iteration=2000
+	iteration=5000
 
 	all_user=list(range(user_num))
 	all_item=list(range(item_num))

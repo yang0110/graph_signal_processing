@@ -25,7 +25,7 @@ for noise_scale in noise_list:
 	print('noise scale=%s'%(noise_scale))
 	noisy_signal=ori_signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
 	_lambda=0.2
-	iteration=2000
+	iteration=1000
 
 	all_user=list(range(user_num))
 	all_item=list(range(item_num))
@@ -60,15 +60,14 @@ for noise_scale in noise_list:
 			error_list_ols[noise_scale].extend([error_ols])
 
 
-
 plt.figure()
-for noise in noise_list:
-	plt.plot(error_list_ols[noise], label='noise_scale=%s'%(noise))
+for noise_scale in noise_list:
+	plt.plot(error_list_ols[noise_scale], label='noise_scale=%s'%(noise_scale))
 plt.legend(loc=0)
 plt.ylabel('MSE (Error)', fontsize=12)
 plt.xlabel('#of sample (Size of training set)', fontsize=12)
-plt.savefig(newpath+str(timeRun)+'OLS_error_tune_noise_user_num_%s'%(user_num)+'.png', dpi=100)
-plt.show()
+plt.savefig(newpath+str(timeRun)+'OLS_error_tune_noise_%s_user_num_%s_lambda_%s'%(noise_scale, user_num, _lambda)+'.png', dpi=100)
+plt.clf()
 
 
 
