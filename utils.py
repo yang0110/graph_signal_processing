@@ -27,7 +27,7 @@ def graph_ridge(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, 
 	l_signal=cp.multiply(cp.matmul(u, item_f),mask)
 	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
 	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
-	cons=[u<=1, u>=0]
+	#cons=[u<=1, u>=0]
 	alp=cp.Parameter(nonneg=True)
 	alp.value=alpha 
 	problem=cp.Problem(cp.Minimize(loss+alp*reg))
@@ -35,6 +35,18 @@ def graph_ridge(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, 
 	sol=u.value 
 	return sol 
 
+def graph_ridge_no_mask(user_num, dimension, lap, item_f, noisy_signal, alpha):
+	u=cp.Variable((user_num, dimension))
+	l_signal=cp.matmul(u,item_f)
+	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
+	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
+	#cons=[u<=1, u>=0]
+	alp=cp.Parameter(nonneg=True)
+	alp.value=alpha 
+	problem=cp.Problem(cp.Minimize(loss+alp*reg))
+	problem.solve()
+	sol=u.value 
+	return sol 
 
 def graph_ridge_iterative_model(item_f, noisy_signal, lap, beta_gb, dimension, user_list, item_list, user_dict, g_lambda):
 	user_nb=len(user_list)
@@ -68,6 +80,31 @@ def graph_ridge_iterative_model(item_f, noisy_signal, lap, beta_gb, dimension, u
 	beta_gb[user_list]=u.copy()
 	return beta_gb
 
+
+
+
+def graph_ridge_iterative_model_no_mask(user_num, item_f, noisy_signal, lap, beta_gb, dimension, g_lambda):
+	u=beta_gb.copy()
+	item_nb=len(item_f)
+	#update each atom
+	for k in range(dimension):
+		P=np.ones((user_num, item_nb))
+		P=P*(item_f[k]!=0)
+		p=P[0].reshape((1,item_nb))
+		_sum=np.zeros((user_num, item_nb))
+		for kk in range(dimension):
+			if kk==k:
+				pass 
+			else:
+				_sum+=np.dot(u[:,kk].reshape((user_num, 1)), item_f[kk,:].reshape((1, item_nb)))
+		e=noisy_signal-_sum
+		ep=e*P
+		v_r=(item_f[k,:].reshape((1,item_nb))*p).T 
+		temp1=np.linalg.inv(np.dot(v_r.T, v_r)*np.identity(user_num)+g_lambda*lap)
+		temp2=np.dot(ep, v_r)
+		u[:,k]=np.dot(temp1, temp2).ravel()
+	beta_gb=u.copy()
+	return beta_gb
 # Total variance
 def graph_ridge_TV(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, alpha):
 	lap=np.sqrt(lap)
@@ -147,7 +184,6 @@ def generate_graph_and_atom(user_num, item_num, dimension, noise_scale, p):
 def generate_artificial_graph(user_num):
 	pos=np.random.uniform(size=(user_num, 2))
 	adj=rbf_kernel(pos)
-	# adj[adj<0.75]=0
 	np.fill_diagonal(adj,0)
 	lap=csgraph.laplacian(adj, normed=False)
 	lap=normalized_trace(lap, user_num)
@@ -182,9 +218,7 @@ def generate_GMRF(user_num, item_num, dimension):
 	adj, lap, pos=generate_artificial_graph(user_num)
 	cov=np.linalg.pinv(lap)
 	user_f=np.random.multivariate_normal(mean=np.zeros(user_num), cov=cov, size=dimension).T
-	#user_f=Normalizer().fit_transform(user_f)
 	item_f=np.random.uniform(size=(item_num, dimension))
-	#itme_f=Normalizer().fit_transform(item_f)
 	signal=np.dot(user_f, item_f.T)
 	return user_f, item_f.T, pos, signal, adj, lap
 
