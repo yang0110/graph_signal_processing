@@ -15,12 +15,12 @@ def ols(x,y):
 	beta=np.dot(np.dot(y,x), temp2)
 	return beta 
 
-def ridge(x,y, _lambda, dimension):
-	cov=np.dot(x.T,x)
-	temp1=cov+_lambda*np.identity(dimension)
-	temp2=np.linalg.inv(temp1)
-	beta=np.dot(np.dot(y,x), temp2)
-	return beta 
+# def ridge(x,y, _lambda, dimension):
+# 	cov=np.dot(x.T,x)
+# 	temp1=cov+_lambda*np.identity(dimension)
+# 	temp2=np.linalg.inv(temp1)
+# 	beta=np.dot(np.dot(y,x), temp2)
+# 	return beta 
 
 # Tikhonov
 def graph_ridge(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, alpha):
@@ -71,10 +71,57 @@ def graph_ridge_iterative_model(item_f, noisy_signal, lap, beta_gb, dimension, u
 	return beta_gb
 
 
-def graph_ridge_no_mask(user_num, dimension, lap, item_f, noisy_signal, alpha):
+def graph_ridge_mask(user_num, dimension, lap, item_f, noisy_signal, alpha, alpha2, mask):
+	u=cp.Variable((user_num, dimension))
+	l_signal=cp.multiply(cp.matmul(u,item_f.T), mask)
+	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
+	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
+	reg2=cp.sum([cp.quad_form(u[:,d], np.identity(user_num)) for d in range(dimension)])
+	#cons=[u<=1, u>=0]
+	alp=cp.Parameter(nonneg=True)
+	alp2=cp.Parameter(nonneg=True)
+	alp.value=alpha 
+	alp2.value=alpha2
+	problem=cp.Problem(cp.Minimize(loss+alp*reg+alp2*reg2))
+	problem.solve()
+	sol=u.value 
+	return sol 
+
+def graph_ridge_no_mask(user_num, dimension, lap, item_f, noisy_signal, alpha, alpha2):
 	u=cp.Variable((user_num, dimension))
 	l_signal=cp.matmul(u,item_f.T)
 	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
+	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
+	reg2=cp.sum([cp.quad_form(u[:,d], np.identity(user_num)) for d in range(dimension)])
+	#cons=[u<=1, u>=0]
+	alp=cp.Parameter(nonneg=True)
+	alp2=cp.Parameter(nonneg=True)
+	alp.value=alpha 
+	alp2.value=alpha2
+	problem=cp.Problem(cp.Minimize(loss+alp*reg+alp2*reg2))
+	problem.solve()
+	sol=u.value 
+	return sol 
+
+def ridge_mask(user_num, dimension, lap, item_f, noisy_signal, alpha, mask):
+	u=cp.Variable((user_num, dimension))
+	l_signal=cp.multiply(cp.matmul(u,item_f.T), mask)
+	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
+	lap=np.identity(user_num)
+	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
+	#cons=[u<=1, u>=0]
+	alp=cp.Parameter(nonneg=True)
+	alp.value=alpha 
+	problem=cp.Problem(cp.Minimize(loss+alp*reg))
+	problem.solve()
+	sol=u.value 
+	return sol 
+
+def ridge_no_mask(user_num, dimension, lap, item_f, noisy_signal, alpha):
+	u=cp.Variable((user_num, dimension))
+	l_signal=cp.matmul(u,item_f.T)
+	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
+	lap=np.identity(user_num)
 	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
 	#cons=[u<=1, u>=0]
 	alp=cp.Parameter(nonneg=True)
@@ -185,9 +232,10 @@ def generate_artificial_graph(user_num):
 	pos, y = make_blobs(n_samples=user_num, centers=5, n_features=2, random_state=0)
 	pos=Normalizer().fit_transform(pos)
 	adj=rbf_kernel(pos)
+	#adj[adj<0.75]=0
 	np.fill_diagonal(adj,0)
 	lap=csgraph.laplacian(adj, normed=False)
-	lap=normalized_trace(lap, user_num)
+	#lap=normalized_trace(lap, user_num)
 	return adj, lap, pos
 
 
