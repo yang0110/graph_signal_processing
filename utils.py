@@ -82,10 +82,12 @@ def graph_ridge_mask(user_num, dimension, lap, item_f, noisy_signal, alpha, alph
 	alp2=cp.Parameter(nonneg=True)
 	alp.value=alpha 
 	alp2.value=alpha2
+	fun=loss+alp*reg+alp2*reg2
 	problem=cp.Problem(cp.Minimize(loss+alp*reg+alp2*reg2))
 	problem.solve()
 	sol=u.value 
-	return sol 
+	v=fun.value
+	return sol, v
 
 def graph_ridge_no_mask(user_num, dimension, lap, item_f, noisy_signal, alpha, alpha2):
 	u=cp.Variable((user_num, dimension))
