@@ -1,95 +1,94 @@
 import numpy as np 
-import cvxpy as cp 
 import matplotlib.pyplot as plt
-# plt.switch_backend('agg')
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
+import scipy
 import os 
-os.chdir('../code/')
+os.chdir('Documents/code/')
 import datetime 
 import networkx as nx
-from utils import *
+from bandit_models import LinUCB, Graph_ridge
+from utils import create_networkx_graph
+from sklearn import datasets
+path='../results/LapUCB_results/'
 
-timeRun = datetime.datetime.now().strftime('_%m_%d_%H_%M_%S') 
-newpath='../results/'
-
-user_num=50
-item_num=100
+user_num=30
+item_num=300
 dimension=10
-noise_list=[0.1, 0.25, 0.5]
-#user_f,item_f,pos,ori_signal,adj,lap=generate_random_graph(user_num, item_num, dimension)
-user_f,item_f,pos,ori_signal,adj,lap=generate_GMRF(user_num, item_num, dimension)
+iteration=1000
+noise_level=0.1
+alpha=0.01
+
+confidence_inter=0.05
+
+item_f=datasets.make_low_rank_matrix(n_samples=item_num,n_features=dimension, effective_rank=10, random_state=2019)
+item_f=Normalizer().fit_transform(item_f)
+
+# node_f=np.random.normal(size=(user_num, dimension))
+# node_f=Normalizer().fit_transform(node_f)
+# ori_adj=rbf_kernel(node_f)
+# lap=csgraph.laplacian(ori_adj, normed=False)
+# cov=np.linalg.pinv(lap)
+# user_f=np.random.multivariate_normal(np.zeros(user_num), cov, size=dimension).T
+# user_f=Normalizer().fit_transform(user_f)
+
+user_f=np.random.normal(size=(user_num, dimension))
+user_f=Normalizer().fit_transform(user_f)
+ori_adj=rbf_kernel(user_f)
+min_adj=np.round(np.min(ori_adj), decimals=2)
+max_adj=np.round(np.max(ori_adj), decimals=2)
+thrs_list=np.linspace(min_adj, 0.99, 3)
+
+clear_signal=np.dot(user_f, item_f.T)
+noise=np.random.normal(size=(user_num, item_num), scale=noise_level)
+noisy_signal=clear_signal+noise
+
+pool_size=25
+user_array=np.random.choice(np.arange(user_num), size=iteration)
+item_array=np.random.choice(np.arange(item_num), size=iteration*pool_size).reshape((iteration, pool_size))
+
+linucb=LinUCB(user_num, item_num, dimension, pool_size, user_f, item_f,noisy_signal, alpha, confidence_inter)
+l_cum_regret, l_error_list, l_e_array=linucb.run(user_array, item_array, iteration)
+
+cum_regret_array={}
+error_array={}
+edge_num_list=[]
+for thrs in thrs_list:
+	print('thrs', thrs)
+	adj=ori_adj.copy()
+	adj[adj<=thrs]=0
+	graph, edge_num=create_networkx_graph(user_num, adj)
+	edge_num_list.extend([edge_num])
+	lap=csgraph.laplacian(adj, normed=False)+np.identity(user_num)
+	graph_ridge=Graph_ridge(user_num, item_num, dimension, lap, adj, pool_size, user_f, item_f, noisy_signal, alpha, confidence_inter)
+	g_cum_regret, g_error_list, g_e_array, trace_list=graph_ridge.run(user_array, item_array, iteration)
+	cum_regret_array[thrs]=g_cum_regret
+	error_array[thrs]=g_error_list
 
 
-error_list_graph_ridge={noise:[] for noise in noise_list}
-for noise_scale in noise_list:
-	print('noise scale=%s'%(noise_scale))
-	noisy_signal=ori_signal+np.random.normal(size=(user_num, item_num), scale=noise_scale)
-	g_lambda=2
-	iteration=5000
+plt.figure(figsize=(5,5))
+plt.plot(l_cum_regret, 'r', label='LinUCB')
+for thrs, edge_num in zip(thrs_list, edge_num_list):
+	plt.plot(cum_regret_array[thrs], label='LapUCB thres=%s, edge num=%s'%(thrs, edge_num))
 
-	all_user=list(range(user_num))
-	all_item=list(range(item_num))
-	user_list=[]
-	item_list=[]
-
-	beta_graph_ridge=np.zeros((user_num, dimension))
-	user_dict={a:[] for a in all_user}
-
-	for i in range(iteration):
-		print('iteration i=', i )
-		print('noise_scale=', noise_scale)
-		if i<user_num:
-			user=all_user[i]
-			item=np.random.choice(all_item)
-			user_dict[user].extend([item])
-			item_sub_list=user_dict[user]
-			user_list.extend([user])
-			item_list.extend([item])
-			user_list=list(np.unique(user_list))
-			item_list=list(np.unique(item_list))
-			user_nb=len(user_list)
-		else:
-			user=np.random.choice(all_user)
-			item=np.random.choice(all_item)
-			user_dict[user].extend([item])
-			item_sub_list=user_dict[user]
-			### Graph Ridge 
-			user_list.extend([user])
-			item_list.extend([item])
-			user_list=list(np.unique(user_list))
-			item_list=list(np.unique(item_list))
-			user_nb=len(user_list)
-			print('served user number', user_nb)
-			item_nb=len(item_list)
-			sub_item_f=item_f[:, item_list]
-			signal=noisy_signal[user_list][:,item_list]
-			mask=np.ones((user_nb, item_nb))
-			for ind, j in enumerate(user_list):
-				remove_list=[x for x, xx in enumerate(item_list) if xx not in user_dict[j]]
-				mask[ind, remove_list]=0
-			signal=signal*mask
-			sub_lap=lap[user_list][:,user_list]
-			print('sub_lap.size', sub_lap.shape)
-			u_f=graph_ridge(user_nb, item_nb, dimension, sub_lap, sub_item_f, mask, signal, g_lambda)
-			beta_graph_ridge[user_list]=u_f.copy()
-			error_graph_ridge=np.linalg.norm(beta_graph_ridge-user_f)
-			error_list_graph_ridge[noise_scale].extend([error_graph_ridge])
-
-
-
-plt.figure()
-for noise in noise_list:
-	plt.plot(error_list_graph_ridge[noise], label='noise_scale=%s'%(noise))
-plt.legend(loc=0)
-plt.ylabel('MSE (Error)', fontsize=12)
-plt.xlabel('#of sample (Size of training set)', fontsize=12)
-plt.savefig(newpath+str(timeRun)+'Graph_Ridge_error_tune_noise_user_num_%s'%(user_num)+'.png', dpi=100)
+plt.legend(loc=0, fontsize=10)
+plt.xlabel('Iteration', fontsize=12)
+plt.ylabel('Cum Regret', fontsize=12)
+plt.savefig(path+'consistent_model/'+'cum_regret_user_num_noise_%s_%s'%(user_num, noise_level)+',png', dpi=100)
 plt.show()
 
 
+plt.figure(figsize=(5,5))
+plt.plot(l_error_list, 'r', label='LinUCB')
+for thrs, edge_num in zip(thrs_list, edge_num_list):
+	plt.plot(error_array[thrs], label='LapUCB thres=%s, edge num=%s'%(thrs, edge_num))
 
+plt.legend(loc=0, fontsize=10)
+plt.ylabel('Learning Error (Frobenius Norm)')
+plt.xlabel('Iteration', fontsize=12)
+plt.savefig(path+'consistent_model/'+'cum_regret_user_num_noise_%s_%s'%(user_num, noise_level)+',png', dpi=100)
+plt.show()
 
 
 

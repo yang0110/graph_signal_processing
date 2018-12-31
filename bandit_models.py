@@ -93,6 +93,7 @@ class Graph_ridge():
 		# X=self.item_features
 		# Y=self.noisy_signal*self.mask
 		# self.es_user_f=scipy.linalg.solve_sylvester(self.alpha*L, np.dot(X.T,X), np.dot(Y, X))*self.user_mask
+		####
 		u=cp.Variable((self.user_num, self.dimension))
 		l_signal=cp.multiply(cp.matmul(u, self.item_features.T), self.mask)
 		loss=cp.norm(cp.multiply(self.noisy_signal, self.mask)-l_signal, 'fro')**2
@@ -102,9 +103,11 @@ class Graph_ridge():
 		problem=cp.Problem(cp.Minimize(loss+alp*reg))
 		problem.solve()
 		self.es_user_f=u.value 
+		#####
 		# neighbors=list(np.where(self.adj[selected_user]>0)[0])
 		# user_index=np.where(neighbors==selected_user)[0]
 		# neighbor_num=len(neighbors)
+		# print('neighbor_num', neighbor_num)
 		# lap=self.lap[neighbors][:, neighbors]
 		# item_f=self.item_features[self.served_items]
 		# mask=self.mask[neighbors][:,self.served_items]
@@ -141,6 +144,7 @@ class Graph_ridge():
 		cum_regret=[0]
 		error_list=[]
 		error_all_array=np.zeros((iteration, self.user_num))
+		trace_list=[]
 		for i in range(iteration):
 			print('iteration', i)
 			selected_user=random_user_list[i]
@@ -165,7 +169,10 @@ class Graph_ridge():
 			error_list.extend([error])
 			error_all_user=np.linalg.norm(self.es_user_f-self.user_features, axis=1)
 			error_all_array[i,:]=error_all_user
-		return cum_regret, error_list, error_all_array
+			trace=np.trace(np.dot(np.dot((self.es_user_f-self.user_features).T, self.lap), self.user_features))
+			trace_list.extend([trace])
+
+		return cum_regret, error_list, error_all_array, trace_list
 
 
 
