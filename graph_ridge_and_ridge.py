@@ -14,29 +14,19 @@ path='../results/Graph_ridge_results/'
 
 np.random.seed(seed=2019)
 
-user_num=200
-item_num=200
-dimension=10
-noise_level=0.25
-g_lambda=0.01
+user_num=100
+item_num=300
+dimension=25
+noise_level=0.1
+d=3
 
-node_f=np.random.normal(size=(user_num, dimension))
-node_f=Normalizer().fit_transform(node_f)
-ori_adj=rbf_kernel(node_f)
-lap=csgraph.laplacian(ori_adj, normed=False)
-cov=np.linalg.pinv(lap)
-user_f=np.random.multivariate_normal(np.zeros(user_num), cov, size=dimension).T 
+I=np.identity(user_num)
+user_f=np.random.normal(size=(user_num, dimension))
 user_f=Normalizer().fit_transform(user_f)
+ori_adj=rbf_kernel(user_f)
 min_adj=np.min(ori_adj)
 max_adj=np.max(ori_adj)
-thrs_list=np.round(np.linspace(min_adj, max_adj, 4), decimals=2)
-
-# user_f=np.random.normal(size=(user_num, dimension))
-# user_f=Normalizer().fit_transform(user_f)
-# ori_adj=rbf_kernel(user_f)
-# min_adj=np.min(ori_adj)
-# max_adj=np.max(ori_adj)
-# thrs_list=np.round(np.linspace(min_adj, max_adj, 4), decimals=2)
+thrs_list=np.round(np.linspace((min_adj+max_adj)/2, max_adj, 6), decimals=4)
 
 ##generate item_f
 item_f=np.random.normal(size=(item_num, dimension))
@@ -50,10 +40,15 @@ noisy_signal=clear_signal+noise
 ## slyvetser equation
 re=np.zeros(item_num)
 for i in range(item_num):
+	g_lambda=8*np.sqrt(noise_level)*np.sqrt(d)*np.sqrt(user_num+dimension)/(user_num*(i+dimension))
 	print('Ridge i', i)
-	x=item_f[:i+1, :]
-	y=noisy_signal[:, :i+1]
-	ridge=np.dot(np.linalg.inv(np.dot(x.T, x)+g_lambda*np.identity(dimension)), np.dot(x.T, y.T)).T
+	x=item_f[:i+dimension, :]
+	y=noisy_signal[:, :i+dimension]
+	#ridge=np.dot(np.linalg.inv(np.dot(x.T, x)+g_lambda*np.identity(dimension)), np.dot(x.T, y.T)).T
+	A=g_lambda*I
+	B=np.dot(x.T, x)
+	C=np.dot(y,x)
+	ridge=scipy.linalg.solve_sylvester(A, B, C)
 	re[i]=np.linalg.norm(ridge-user_f, 'fro')
 
 ge=np.zeros((len(thrs_list), item_num))
@@ -61,14 +56,16 @@ edge_num_list=[]
 for index, thrs in enumerate(thrs_list):
 	print('thrs', thrs)
 	adj=ori_adj.copy()
+	np.fill_diagonal(adj,0)
 	adj[adj<=thrs]=0
 	graph, edge_num=create_networkx_graph(user_num, adj)
 	edge_num_list.extend([edge_num])
 	lap=csgraph.laplacian(adj, normed=False)+np.identity(user_num)
 	for i in range(item_num):
+		g_lambda=8*np.sqrt(noise_level)*np.sqrt(d)*np.sqrt(user_num+dimension)/(user_num*(i+dimension))
 		print('Graph ridge', thrs, i)
-		x=item_f[:i+1, :]
-		y=noisy_signal[:, :i+1]
+		x=item_f[:i+dimension, :]
+		y=noisy_signal[:, :i+dimension]
 		A=g_lambda*lap 
 		B=np.dot(x.T, x)
 		C=np.dot(y, x)
@@ -76,7 +73,7 @@ for index, thrs in enumerate(thrs_list):
 		ge[index, i]=np.linalg.norm(g_ridge-user_f, 'fro')
 
 plt.figure(figsize=(5,5))
-plt.plot(re, 'k+', label='Ridge')
+plt.plot(re, 'k+-', markevery=0.1, label='Ridge')
 for i in range(len(thrs_list)):
 	plt.plot(ge[i], label='Graph-ridge, T=%s, E=%s'%(thrs_list[i], edge_num_list[i]))
 
