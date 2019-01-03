@@ -11,140 +11,118 @@ import networkx as nx
 from bandit_models import LinUCB, Graph_ridge
 from utils import create_networkx_graph
 from sklearn import datasets
-path='../results/Graph_ridge_results/error_bound/'
+path='../results/Bound/'
 
 np.random.seed(2019)
 
-def ridge_bound(noise_level, rank, lap_fro, user_fro,lap_min, k, d, user_num, dimension, item_num):
+def lambda_(noise_list, d, user_num, dimension, item_num):
 	lam=8*np.sqrt(noise_level)*np.sqrt(d)*np.sqrt(user_num+dimension)/(user_num*item_num)
-	bound=lam*(np.sqrt(rank)+2*lap_fro*user_fro)/(k+lam*lap_min)
-	return bound
+	return lam 
 
-def graph_ridge_bound(noise_level, rank,lap_fro, user_fro, lap_min, k, d, user_num, dimension, item_num):
-	lam=8*np.sqrt(noise_level)*np.sqrt(d)*np.sqrt(user_num+dimension)/(user_num*item_num)
-	bound=lam*(np.sqrt(rank)+2*lap_fro*user_fro)/(k+lam*lap_min)
+def ridge_bound_fro(lam, rank, I_user_fro, I_min, k):
+	bound=lam*(np.sqrt(rank)+2*I_user_fro)/(k+lam*I_min)
 	return bound 
 
+def ridge_bound_infty(lam, rank, I_user_infty, I_min, k):
+	bound=lam*np.sqrt(rank)*(1+2*I_user_infty)/(k+lam*I_min)
+	return bound 
+
+def graph_ridge_bound_fro(lam, rank, lap_user_fro, lap_min, k):
+	bound=lam*(np.sqrt(rank)+2*lap_user_fro)/(k+lam*lap_min)
+	return bound 
+
+def graph_ridge_bound_infty(lam, rank, lap_user_infty, lap_min, k):
+	bound=lam*np.sqrt(r)*(1+2*lap_user_infty)/(k+lam*lap_min)
+	return bound 
+
+
 user_num=200
-dimension=25
-item_num=300
-noise_level=0.1
+dimension=5
+item_num=200
 d=3
 
 item_f=np.random.normal(size=(item_num, dimension))
 item_f=Normalizer().fit_transform(item_f)
+Sigma=np.cov(item_f.T)
+u,s,v=np.linalg.svd(Sigma)
+sigma_min=np.min(s)
+k=sigma_min/18
 
 user_f=np.random.normal(size=(user_num, dimension))
-#user_f,_=datasets.make_blobs(n_samples=user_num, n_features=dimension, centers=5, cluster_std=10)
 user_f=Normalizer().fit_transform(user_f)
 rank=np.linalg.matrix_rank(user_f)
 
-user_fro=np.linalg.norm(user_f, 'fro')
+
 ori_adj=rbf_kernel(user_f)
 min_adj=np.min(ori_adj)
 max_adj=np.max(ori_adj)
 thrs_list=np.round(np.linspace((min_adj+max_adj)/2, max_adj, 5), decimals=4)
+adj=ori_adj.copy()
+thrs=0
+adj[adj<=thrs]=0
+lap=csgraph.laplacian(adj, normed=False)
+lap_user_fro=np.linalg.norm(np.dot(lap, user_f), 'fro')
+lap_user_infty=np.linalg.norm(np.dot(lap, user_f), np.inf)
 
 I=np.identity(user_num)
 I_ev, I_evc=np.linalg.eig(I)
 I_min=np.max(I_ev)
-I_fro=np.linalg.norm(I, 'fro')
+I_user_fro=np.linalg.norm(np.dot(I, user_f), 'fro')
+I_user_infty=np.linalg.norm(np.dot(I, user_f), np.inf)
 
-ridge_bound_array=np.zeros(item_num)
-graph_ridge_bound_array=np.zeros((len(thrs_list), item_num))
-edge_num_list=np.zeros(len(thrs_list))
-for ind, thrs in enumerate(thrs_list):
-	print('thrs', thrs)
-	adj=ori_adj.copy()
-	np.fill_diagonal(adj, 0)
-	adj[adj<=thrs]=0
-	graph, edge_num=create_networkx_graph(user_num, adj)
-	edge_num_list[ind]=edge_num
-	lap=csgraph.laplacian(adj, normed=False)+np.identity(user_num)
-	eigenvalues, eigenvectors=np.linalg.eig(lap)
-	lap_min=np.max(eigenvalues)
-	lap_fro=np.linalg.norm(lap, 'fro')
+noise_list=[0.01,0.1,0.5, 1, 5 10]
+
+noise_level=5
+
+lam_list=[0.01,0.03,0.05,0.1,0.25, 0.5, 1]
+graph_ridge_bound_infty_array=np.zeros((len(lam_list),item_num))
+for index, lam in enumerate(lam_list):
+	print('lam', lam)
 	for i in range(item_num):
+		print('i', i)
 		x=item_f[:i+dimension,:]
 		Sigma=np.cov(x.T)
-		u, s, v=np.linalg.svd(Sigma)
+		u,s,v=np.linalg.svd(Sigma)
 		sigma_min=np.min(s)
 		k=sigma_min/18
-		print('thrs, i', thrs, i)
-		ridge_bound_array[i]=ridge_bound(noise_level, rank, I_fro, user_fro, I_min, k, d, user_num, dimension, i+dimension)
-		graph_ridge_bound_array[ind, i]=graph_ridge_bound(noise_level, rank, lap_fro, user_fro, lap_min, k, d, user_num, dimension, i+dimension)
+		graph_ridge_bound_infty_array[index, i]=graph_ridge_bound_infty(lam,rank, lap_user_infty, lap_min, k)
 
 plt.figure()
-plt.plot(ridge_bound_array, 'k+-',markevery=0.1, label='ridge bound')
-for index, thrs in enumerate(thrs_list):
-	plt.plot(graph_ridge_bound_array[index,], label='T=%s, E=%s'%(thrs, edge_num_list[index]))
+for index, lam in enumerate(lam_list):
+	plt.plot(graph_ridge_bound_infty_array[index], label=str(lam))
 
 plt.legend(loc=0, fontsize=12)
+plt.ylabel('Theoretical Bound', fontsize=12)
 plt.xlabel('Sample size', fontsize=12)
-plt.ylabel('Bound', fontsize=12)
-plt.title('Theoretical Bound', fontsize=12)
+plt.title('graph_ridge infty fixed lambda \n user num=%s, noise=%s'%(user_num, noise_level), fontsize=12)
+plt.savefig(path+'graph_ridge_infty_fixed_lam_user_num_%s_noise_%s'%(user_num, noise_level)+'.png', dpi=300)
 plt.show()
 
 
-# adj=rbf_kernel(user_f)
-# min_adj=np.min(adj)
-# max_adj=np.max(adj)
-# thrs_list=np.round(np.linspace(min_adj,1.0, 10), decimals=4)
+clear_signal=np.dot(user_f, item_f.T)
+noise=np.random.normal(size=(user_num, item_num), scale=noise_level)
+noisy_signal=clear_signal+noise
 
-# graph_ridge_bound_array={}
-# edge_num_list=[]
-# for thrs in thrs_list:
-# 	print('thrs', thrs)
-# 	new_adj=adj.copy()
-# 	new_adj[new_adj<thrs]=0
-# 	np.fill_diagonal(new_adj, 0)
-# 	graph, edge_num=create_networkx_graph(user_num, new_adj)
-# 	edge_num_list.extend([edge_num])
-# 	I=np.identity(user_num)
-# 	I_fro=np.linalg.norm(I, 'fro')
-# 	lap=csgraph.laplacian(new_adj, normed=False)
-# 	eigenvalues, eigvectors=np.linalg.eig(lap)
-# 	lap_fro=np.linalg.norm(lap,'fro')
-# 	lap_min=np.min(eigenvalues)
-# 	ridge_bound_list=[]
-# 	graph_ridge_bound_list=[]
-# 	for i in range(item_num):
-# 		ridge_b=ridge_bound(noise_level, rank, I_fro, user_fro, k, d, user_num, dimension, i+1)
-# 		ridge_bound_list.extend([ridge_b])
-# 		graph_ridge_b=graph_ridge_bound(noise_level, rank, user_fro, k, lap_fro, lap_min, d, user_num, dimension, i+1)
-# 		graph_ridge_bound_list.extend([graph_ridge_b])
-# 	graph_ridge_bound_array[thrs]=graph_ridge_bound_list
+graph_ridge_error_array=np.zeros((len(lam_list), item_num))
+for index, lam in enumerate(lam_list):
+	print('lam', lam)
+	for i in range(item_num):
+		print('i', i)
+		x=item_f[:i+dimension,:]
+		y=noisy_signal[:, :i+dimension]
+		A=lam*lap
+		B=np.dot(x.T, x)
+		C=np.dot(y, x)
+		graph_ridge=scipy.linalg.solve_sylvester(A, B, C)
+		graph_ridge_error_array[index, i]=np.linalg.norm(graph_ridge-user_f, 'fro')
 
+plt.figure()
+for index, lam in enumerate(lam_list):
+	plt.plot(graph_ridge_error_array[index], label='lambda='+str(lam))
 
-# plt.figure()
-# plt.plot(ridge_bound_list[dimension:],'r+', markevery=0.01, label='ridge')
-# for thrs, edge in zip(thrs_list[5:], edge_num_list[5:]):
-# 	plt.plot(graph_ridge_bound_array[thrs][dimension:], label='T='+str(thrs)+','+'E='+str(edge))
-
-# plt.legend(loc=0, fontsize=12)
-# plt.title('user num=%s, noise=%s'%(user_num, noise_level), fontsize=12)
-# plt.xlabel('item num', fontsize=12)
-# plt.ylabel('bound', fontsize=12)
-# plt.savefig(path+'Theoretical_bound_user_num_%s_noise_%s'%(user_num, noise_level)+'.png', dpi=100)
-# plt.show()
-
-
-# user_f=np.random.normal(size=(user_num, dimension))
-# user_f=Normalizer().fit_transform(user_f)
-# adj=rbf_kernel(user_f)
-# min_adj=np.min(adj)
-# max_adj=np.max(adj)
-# thrs_list=np.round(np.linspace(min_adj, max_adj, 100), decimals=5)
-# ratio_list=[]
-# for thrs in thrs_list:
-# 	new_adj=adj.copy()
-# 	new_adj[new_adj<=thrs]=0
-# 	lap=csgraph.laplacian(new_adj, normed=False)
-# 	lap_infty=np.linalg.norm(lap, np.inf)
-# 	lap_trace=np.trace(lap)
-# 	ratio=lap_infty/lap_trace
-# 	ratio_list.extend([ratio])
-
-# plt.figure()
-# plt.plot(thrs_list, ratio_list)
-# plt.show()
+plt.legend(loc=0, fontsize=12)
+plt.ylabel('Emperical Bound', fontsize=12)
+plt.xlabel('Sample size', fontsize=12)
+plt.title('graph_ridge error fixed lambda \n user num=%s, noise=%s'%(user_num, noise_level), fontsize=12)
+plt.savefig(path+'graph_ridge_empircial_error_fixed_lam_user_num_%s_noise_%s'%(user_num, noise_level)+'.png', dpi=300)
+plt.show()

@@ -12,22 +12,22 @@ from bandit_models import LinUCB, Graph_ridge
 from sklearn import datasets
 path='../results/LapUCB_results/'
 
-user_num=50
+user_num=20
 item_num=300
-dimension=10
+dimension=5
 iteration=5000
-noise_level=0.01
-alpha=0.01
+noise_level=0.25
+alpha=0.1
 
 confidence_inter=0.05
 
-item_f=datasets.make_low_rank_matrix(n_samples=item_num,n_features=dimension, effective_rank=10, random_state=2019)
-item_f=MinMaxScaler().fit_transform(item_f)
+item_f=np.random.normal(size=(item_num, dimension))
+item_f=Normalizer().fit_transform(item_f)
 
 # node_f=np.random.normal(size=(user_num, dimension))
 # node_f=Normalizer().fit_transform(node_f)
 # adj=rbf_kernel(node_f)
-# thrs=0.8
+# thrs=0.5
 # adj[adj<=thrs]=0.0
 # lap=csgraph.laplacian(adj, normed=False)+np.identity(user_num)
 # cov=np.linalg.pinv(lap)
@@ -35,11 +35,12 @@ item_f=MinMaxScaler().fit_transform(item_f)
 # user_f=Normalizer().fit_transform(user_f)
 
 user_f=np.random.normal(size=(user_num, dimension))
-user_f=MinMaxScaler().fit_transform(user_f)
+user_f=Normalizer().fit_transform(user_f)
 adj=rbf_kernel(user_f)
-thrs=0
+thrs=0.5
 adj[adj<=thrs]=0
-lap=csgraph.laplacian(adj, normed=False)
+lap=csgraph.laplacian(adj, normed=False)+np.identity(user_num)
+
 clear_signal=np.dot(user_f, item_f.T)
 noise=np.random.normal(size=(user_num, item_num), scale=noise_level)
 noisy_signal=clear_signal+noise
@@ -61,6 +62,7 @@ plt.plot(l_cum_regret, 'r', label='LinUCB')
 plt.plot(g_cum_regret, 'y', label='LapUCB')
 plt.xlabel('Iteration', fontsize=12)
 plt.ylabel('Cum regret', fontsize=12)
+plt.title('User num=%s, noise=%s, T=%s'%(user_num, noise_level, thrs), fontsize=12)
 plt.legend(loc=0, fontsize=12)
 plt.savefig(path+'random_model/'+'cum_regret_user_num_noise_%s_%s'%(user_num, noise_level)+'.png', dpi=100)
 plt.show()
@@ -70,13 +72,12 @@ plt.plot(l_error_list, 'r', label='LinUCB')
 plt.plot(g_error_list, 'y', label='LapUCB')
 plt.xlabel('Iteration', fontsize=12)
 plt.ylabel('Learning Error', fontsize=12)
+plt.title('User num=%s, noise=%s, T=%s'%(user_num, noise_level, thrs), fontsize=12)
 plt.legend(loc=0, fontsize=12)
 plt.savefig(path+'random_model/'+'learing_error_user_num_noise_%s_%s'%(user_num, noise_level)+'.png', dpi=100)
 plt.show()
 
 
-plt.plot(trace_list)
-plt.show()
 
 labels = ['user-1', 'user-2', 'user-3', 'user-4', 'user-5']
 plt.figure(figsize=(5,5))

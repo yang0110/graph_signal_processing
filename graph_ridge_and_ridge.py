@@ -17,7 +17,7 @@ np.random.seed(seed=2019)
 user_num=100
 item_num=300
 dimension=25
-noise_level=0.1
+noise_level=2
 d=3
 
 I=np.identity(user_num)
@@ -41,6 +41,7 @@ noisy_signal=clear_signal+noise
 re=np.zeros(item_num)
 for i in range(item_num):
 	g_lambda=8*np.sqrt(noise_level)*np.sqrt(d)*np.sqrt(user_num+dimension)/(user_num*(i+dimension))
+	g_lambda=0.1
 	print('Ridge i', i)
 	x=item_f[:i+dimension, :]
 	y=noisy_signal[:, :i+dimension]
@@ -60,9 +61,10 @@ for index, thrs in enumerate(thrs_list):
 	adj[adj<=thrs]=0
 	graph, edge_num=create_networkx_graph(user_num, adj)
 	edge_num_list.extend([edge_num])
-	lap=csgraph.laplacian(adj, normed=False)+np.identity(user_num)
+	lap=csgraph.laplacian(adj, normed=False)
 	for i in range(item_num):
 		g_lambda=8*np.sqrt(noise_level)*np.sqrt(d)*np.sqrt(user_num+dimension)/(user_num*(i+dimension))
+		g_lambda=0.1
 		print('Graph ridge', thrs, i)
 		x=item_f[:i+dimension, :]
 		y=noisy_signal[:, :i+dimension]
@@ -73,9 +75,9 @@ for index, thrs in enumerate(thrs_list):
 		ge[index, i]=np.linalg.norm(g_ridge-user_f, 'fro')
 
 plt.figure(figsize=(5,5))
-plt.plot(re, 'k+-', markevery=0.1, label='Ridge')
+plt.plot(re[dimension:], 'k+', markevery=0.1, label='Ridge')
 for i in range(len(thrs_list)):
-	plt.plot(ge[i], label='Graph-ridge, T=%s, E=%s'%(thrs_list[i], edge_num_list[i]))
+	plt.plot(ge[i][dimension:], label='Graph-ridge, T=%s, E=%s'%(thrs_list[i], edge_num_list[i]))
 
 plt.xlabel('Training set size', fontsize=12)
 plt.ylabel('Learning Error', fontsize=12)
