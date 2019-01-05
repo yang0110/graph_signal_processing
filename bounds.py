@@ -5,7 +5,7 @@ from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
 import scipy
 import os 
-os.chdir('Documents/code/')
+os.chdir('Documents/research/code/')
 import datetime 
 import networkx as nx
 from bandit_models import LinUCB, Graph_ridge
@@ -39,6 +39,7 @@ def graph_ridge_bound_infty(lam, rank, lap_user_infty, lap_min, k):
 user_num=200
 dimension=5
 item_num=200
+noise_level=0.1
 d=3
 
 item_f=np.random.normal(size=(item_num, dimension))
@@ -60,69 +61,36 @@ thrs_list=np.round(np.linspace((min_adj+max_adj)/2, max_adj, 5), decimals=4)
 adj=ori_adj.copy()
 thrs=0
 adj[adj<=thrs]=0
-lap=csgraph.laplacian(adj, normed=False)
+lap=csgraph.laplacian(adj, normed=False)+np.identity(user_num)
+lap_evalues, lap_vectors=np.linalg.eig(lap)
+lap_evalues=np.sort(lap_evalues)
+lap_2=lap_evalues[1]
 lap_user_fro=np.linalg.norm(np.dot(lap, user_f), 'fro')
 lap_user_infty=np.linalg.norm(np.dot(lap, user_f), np.inf)
 
 I=np.identity(user_num)
 I_ev, I_evc=np.linalg.eig(I)
-I_min=np.max(I_ev)
+I_ev=np.sort(I_ev)
+I_min=np.min(I_ev)
+I_2=I_ev[1]
 I_user_fro=np.linalg.norm(np.dot(I, user_f), 'fro')
 I_user_infty=np.linalg.norm(np.dot(I, user_f), np.inf)
 
-noise_list=[0.01,0.1,0.5, 1, 5 10]
-
-noise_level=5
-
-lam_list=[0.01,0.03,0.05,0.1,0.25, 0.5, 1]
-graph_ridge_bound_infty_array=np.zeros((len(lam_list),item_num))
-for index, lam in enumerate(lam_list):
-	print('lam', lam)
-	for i in range(item_num):
-		print('i', i)
-		x=item_f[:i+dimension,:]
-		Sigma=np.cov(x.T)
-		u,s,v=np.linalg.svd(Sigma)
-		sigma_min=np.min(s)
-		k=sigma_min/18
-		graph_ridge_bound_infty_array[index, i]=graph_ridge_bound_infty(lam,rank, lap_user_infty, lap_min, k)
+ridge_array=np.zeros(item_num)
+graph_ridge_array=np.zeros(item_num)
+for i in range(item_num):
+	lam=lambda_(noise_level, d, user_num, dimension, i+1)
+	ridge_array[i]=ridge_bound_fro(lam, rank, I_user_fro, I_2, k)
+	graph_ridge_array[i]=graph_ridge_bound_fro(lam, rank, lap_user_fro, lap_2, k)
 
 plt.figure()
-for index, lam in enumerate(lam_list):
-	plt.plot(graph_ridge_bound_infty_array[index], label=str(lam))
-
-plt.legend(loc=0, fontsize=12)
-plt.ylabel('Theoretical Bound', fontsize=12)
-plt.xlabel('Sample size', fontsize=12)
-plt.title('graph_ridge infty fixed lambda \n user num=%s, noise=%s'%(user_num, noise_level), fontsize=12)
-plt.savefig(path+'graph_ridge_infty_fixed_lam_user_num_%s_noise_%s'%(user_num, noise_level)+'.png', dpi=300)
+plt.plot(ridge_array, label='ridge')
+plt.plot(graph_ridge_array, label='graph ridge')
+plt.legend(loc=0,fontsize=12)
 plt.show()
 
 
-clear_signal=np.dot(user_f, item_f.T)
-noise=np.random.normal(size=(user_num, item_num), scale=noise_level)
-noisy_signal=clear_signal+noise
 
-graph_ridge_error_array=np.zeros((len(lam_list), item_num))
-for index, lam in enumerate(lam_list):
-	print('lam', lam)
-	for i in range(item_num):
-		print('i', i)
-		x=item_f[:i+dimension,:]
-		y=noisy_signal[:, :i+dimension]
-		A=lam*lap
-		B=np.dot(x.T, x)
-		C=np.dot(y, x)
-		graph_ridge=scipy.linalg.solve_sylvester(A, B, C)
-		graph_ridge_error_array[index, i]=np.linalg.norm(graph_ridge-user_f, 'fro')
 
-plt.figure()
-for index, lam in enumerate(lam_list):
-	plt.plot(graph_ridge_error_array[index], label='lambda='+str(lam))
 
-plt.legend(loc=0, fontsize=12)
-plt.ylabel('Emperical Bound', fontsize=12)
-plt.xlabel('Sample size', fontsize=12)
-plt.title('graph_ridge error fixed lambda \n user num=%s, noise=%s'%(user_num, noise_level), fontsize=12)
-plt.savefig(path+'graph_ridge_empircial_error_fixed_lam_user_num_%s_noise_%s'%(user_num, noise_level)+'.png', dpi=300)
-plt.show()
+

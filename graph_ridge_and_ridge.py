@@ -7,7 +7,7 @@ from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
 import scipy
 import os 
-os.chdir('Documents/code/')
+os.chdir('Documents/research/code/')
 import datetime 
 import networkx as nx
 from utils import *
@@ -30,6 +30,7 @@ min_adj=np.min(ori_adj)
 max_adj=np.max(ori_adj)
 adj=ori_adj.copy()
 thrs=(min_adj+max_adj)/2
+thrs=0
 adj[adj<=thrs]=0
 lap=csgraph.laplacian(adj, normed=False)
 

@@ -7,7 +7,7 @@ from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
 import scipy
 import os 
-os.chdir('Documents/code/')
+os.chdir('Documents/research/code/')
 import datetime 
 import networkx as nx
 from utils import *
@@ -16,7 +16,7 @@ path='../results/Graph_ridge_results/'
 
 np.random.seed(seed=2019)
 
-user_num=30
+user_num=10
 item_num=100
 iteration=2000
 dimension=5
@@ -25,25 +25,21 @@ noise_level=0.5
 I=np.identity(user_num)
 user_f=np.random.normal(size=(user_num, dimension))
 user_f=Normalizer().fit_transform(user_f)
-ori_adj=rbf_kernel(user_f)
-min_adj=np.min(ori_adj)
-max_adj=np.max(ori_adj)
-adj=ori_adj.copy()
+adj=rbf_kernel(user_f)
+min_adj=np.min(adj)
+max_adj=np.max(adj)
 thrs=np.round((min_adj+max_adj)/2, decimals=2)
 thrs=0
 adj[adj<=thrs]=0
 lap=csgraph.laplacian(adj, normed=False)
 
-##generate item_f
 item_f=np.random.normal(size=(item_num, dimension))
 item_f=Normalizer().fit_transform(item_f)
 
-## signal 
 clear_signal=np.dot(user_f, item_f.T)
 noise=np.random.normal(size=(user_num, item_num), scale=noise_level)
 noisy_signal=clear_signal+noise 
 
-## with mask 
 random_user_array=np.random.choice(range(user_num), size=iteration)
 random_item_array=np.random.choice(range(item_num), size=iteration)
 

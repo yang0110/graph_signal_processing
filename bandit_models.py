@@ -22,10 +22,13 @@ class LinUCB():
 		self.alpha=alpha
 		self.c_t=confidence_inter
 
-	def update_user_features(self,  selected_user, picked_item, reward):
+	def update_user_features(self,  selected_user, picked_item, reward, time):
 		self.user_cov[selected_user]+=np.outer(self.item_features[picked_item], self.item_features[picked_item])+self.alpha*np.identity(self.dimension)
 		self.bias[selected_user]+=self.item_features[picked_item]*reward
-		self.es_user_f[selected_user]=np.dot(np.linalg.pinv(self.user_cov[selected_user]), self.bias[selected_user])
+		if (time%20==0) or (time==0):
+			self.es_user_f[selected_user]=np.dot(np.linalg.pinv(self.user_cov[selected_user]), self.bias[selected_user])
+		else:
+			pass 
 
 
 	def choose_item(self, selected_user, item_pool):
@@ -56,7 +59,7 @@ class LinUCB():
 				self.user_cov[selected_user]=np.zeros((self.dimension, self.dimension))
 				self.bias[selected_user]=np.zeros(self.dimension)
 			picked_item, reward, regret=self.choose_item(selected_user, item_pool)
-			self.update_user_features(selected_user, picked_item, reward)
+			self.update_user_features(selected_user, picked_item, reward, i)
 			cum_regret.extend([cum_regret[-1]+regret])
 			error=np.linalg.norm(self.es_user_f-self.user_features, 'fro')
 			error_list.extend([error])
@@ -100,7 +103,7 @@ class Graph_ridge():
 		# problem.solve()
 		# self.es_user_f=u.value 
 		##### only update the user and its neighbors
-		if (time%10==0) or (time==0):
+		if (time%20==0) or (time==0):
 			neighbors=list(np.where(self.adj[selected_user]>0)[0])
 			neighbor_num=len(neighbors)
 			print('neighbor_num', neighbor_num)
