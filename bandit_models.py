@@ -86,10 +86,10 @@ class Graph_ridge():
 		self.user_mask=np.zeros((user_num, dimension))
 		self.item_mask=np.zeros((item_num, dimension))
 
-	def update_user_features(self, selected_user, picked_item, reward):
+	def update_user_features(self, selected_user, picked_item, reward, time):
 		self.user_cov[selected_user]+=np.outer(self.item_features[picked_item], self.item_features[picked_item])+self.alpha*np.identity(self.dimension)
 		self.bias[selected_user]+=self.item_features[picked_item]*reward
-		#### Update all users in each iteration
+		#### update all user at each iteration
 		# u=cp.Variable((self.user_num, self.dimension))
 		# l_signal=cp.multiply(cp.matmul(u, self.item_features.T), self.mask)
 		# loss=cp.norm(cp.multiply(self.noisy_signal, self.mask)-l_signal, 'fro')**2
@@ -99,17 +99,18 @@ class Graph_ridge():
 		# problem=cp.Problem(cp.Minimize(loss+alp*reg))
 		# problem.solve()
 		# self.es_user_f=u.value 
-		##### Only update neighbors at each iteration
-		neighbors=np.where(self.adj[selected_user]>0)[0]
-		user_index=np.where(neighbors==selected_user)[0]
-		print('user_index', user_index)
-		neighbor_num=len(neighbors)
-		print('neighbor_num', neighbor_num)
-		lap=self.lap[neighbors][:, neighbors]
-		item_f=self.item_features[self.served_items]
-		mask=self.mask[neighbors][:,self.served_items]
-		noisy_signal=self.noisy_signal[neighbors][:, self.served_items]
-		self.es_user_f[neighbors]=self.graph_ridge_solver(neighbor_num, mask, item_f, noisy_signal, lap)
+		##### only update the user and its neighbors
+		if (time%10==0) or (time==0):
+			neighbors=list(np.where(self.adj[selected_user]>0)[0])
+			neighbor_num=len(neighbors)
+			print('neighbor_num', neighbor_num)
+			lap=self.lap[neighbors][:, neighbors]
+			item_f=self.item_features[self.served_items]
+			mask=self.mask[neighbors][:,self.served_items]
+			noisy_signal=self.noisy_signal[neighbors][:, self.served_items]
+			self.es_user_f[neighbors]=self.graph_ridge_solver(neighbor_num, mask, item_f, noisy_signal, lap)
+		else:
+			pass
 
 	def graph_ridge_solver(self, neighbor_num, mask, item_f, noisy_signal, lap):
 		u=cp.Variable((neighbor_num, self.dimension))
@@ -160,16 +161,13 @@ class Graph_ridge():
 			self.mask[selected_user, picked_item]=1
 			self.user_mask[selected_user,:]=1
 			self.item_mask[picked_item,:]=1
-			self.update_user_features(selected_user, picked_item, reward)
+			self.update_user_features(selected_user, picked_item, reward, i)
 			cum_regret.extend([cum_regret[-1]+regret])
 			error=np.linalg.norm(self.es_user_f-self.user_features, 'fro')
 			error_list.extend([error])
 			error_all_user=np.linalg.norm(self.es_user_f-self.user_features, axis=1)
 			error_all_array[i,:]=error_all_user
-			trace=np.trace(np.dot(np.dot((self.es_user_f-self.user_features).T, self.lap), self.user_features))
-			trace_list.extend([trace])
-
-		return cum_regret, error_list, error_all_array, trace_list
+		return cum_regret, error_list, error_all_array
 
 
 
