@@ -16,10 +16,10 @@ path='../results/Graph_ridge_results/'
 
 np.random.seed(seed=2019)
 
-user_num=100
+user_num=200
 item_num=500
-dimension=25
-noise_level=1
+dimension=10
+noise_level=0.75
 
 I=np.identity(user_num)
 user_f=np.random.normal(size=(user_num, dimension))

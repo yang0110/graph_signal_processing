@@ -54,7 +54,7 @@ def trace_norm(user_f, lap):
 	norm=np.trace(np.dot(np.dot(user_f.T, lap), user_f))
 	return norm 
 
-cluster_std_list=np.arange(0.01, 100, 0.1)
+cluster_std_list=np.arange(0.01, 20, 0.1)
 norm_list=np.zeros(len(cluster_std_list))
 norm_list2=np.zeros(len(cluster_std_list))
 for index, cluster_std in enumerate(cluster_std_list):
@@ -65,12 +65,47 @@ for index, cluster_std in enumerate(cluster_std_list):
 	lap_evalues, lap_evectors=np.linalg.eig(lap)
 	lap_evalues=np.sort(lap_evalues)
 	lam=np.diag(lap_evalues)
-	norm_list[index]=trace_norm(user_f,lam)
+	norm_list[index]=trace_norm(user_f,lap)
 	norm_list2[index]=lap_evalues[1]*np.linalg.norm(user_f, 'fro')**2
 
 plt.plot(cluster_std_list, norm_list, label='trace')
 plt.plot(cluster_std_list, norm_list2, label='evalues')
 plt.legend(loc=0, fontsize=12)
+plt.show()
+
+user_f=np.random.normal(size=(user_num, dimension))
+ori_adj=rbf_kernel(user_f)
+min_adj=np.min(ori_adj)
+max_adj=np.max(ori_adj)
+thrs_list=np.round(np.linspace(min_adj, max_adj, 10),decimals=3)
+trace_values=np.zeros(len(thrs_list))
+eigen_norms_2=np.zeros(len(thrs_list))
+eigen_norms_3=np.zeros(len(thrs_list))
+eigen_norms_1=np.zeros(len(thrs_list))
+for index, thrs in enumerate(thrs_list):
+	adj=ori_adj.copy()
+	adj[adj<=thrs]=0
+	lap=csgraph.laplacian(adj, normed=False)
+	lap_evalues, lap_evectors=np.linalg.eig(lap)
+	lap_evalues=np.sort(lap_evalues)
+	trace_values[index]=trace_norm(user_f, lap)
+	eigen_norms_2[index]=lap_evalues[1]*np.linalg.norm(user_f, 'fro')**2
+	eigen_norms_1[index]=lap_evalues[0]*np.linalg.norm(user_f, 'fro')**2
+	eigen_norms_2[index]=lap_evalues[2]*np.linalg.norm(user_f, 'fro')**2
+
+plt.plot(thrs_list, trace_values, label='trace')
+plt.plot(thrs_list, eigen_norms_2, label='eigen_2_norms')
+plt.legend(loc=0, fontsize=12)
+plt.xlabel('threshold', fontsize=12)
+plt.ylabel('norm', fontsize=12)
+# plt.savefig(path+'trace_vs_lap_2_times_user_f'+'.png', dpi=200)
+plt.show()
+
+plt.plot(thrs_list, eigen_norms_1, label='eigen_1_norm')
+plt.legend(loc=0, fontsize=12)
+plt.xlabel('threshold', fontsize=12)
+plt.ylabel('norm', fontsize=12)
+# plt.savefig(path+'lap_1_times_user_f'+'.png', dpi=200)
 plt.show()
 
 

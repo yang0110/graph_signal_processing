@@ -11,7 +11,7 @@ import networkx as nx
 from bandit_models import LinUCB, Graph_ridge
 from utils import create_networkx_graph
 from sklearn import datasets
-path='../results/Bound/'
+path='../results/Bound/theoretical bound/'
 
 np.random.seed(2019)
 
@@ -36,10 +36,31 @@ def graph_ridge_bound_infty(lam, rank, lap_user_infty, lap_min, k):
 	return bound 
 
 
+def graph_ridge_decomp(user_num, dimension, X, Y, lam, lap_evalues):
+	user_est=np.zeros((user_num, dimension))
+	I=np.identity(dimension)
+	for t in range(user_num):
+		lam_t=lam*lap_evalues[t] 
+		y=Y[t]
+		a=np.dot(y, X)
+		b=np.linalg.pinv(np.dot(X.T, X)+lam_t*I)
+		user_est[t]=np.dot(a,b)
+	return user_est 
+
+def ridge_decomp(user_num, dimension, X, Y, lam):
+	user_est=np.zeros((user_num, dimension))
+	I=np.identity(dimension)
+	for t in range(user_num):
+		y=Y[t]
+		a=np.dot(y, X)
+		b=np.linalg.pinv(np.dot(X.T, X)+lam*I)
+		user_est[t]=np.dot(a,b)
+	return user_est 
+
 user_num=50
 dimension=10
-item_num=2000
-noise_level=0.1
+item_num=500
+noise_level=0.25
 d=2
 
 item_f=np.random.normal(size=(item_num, dimension))
@@ -84,68 +105,23 @@ graph_ridge_simple_array=np.zeros(item_num)
 lam_list=np.zeros(item_num)
 for i in range(item_num):
 	lam=lambda_(noise_level, d, user_num, dimension, i+1)
-	lam2=lam
+	lam2=lam*0.1
 	lam_list[i]=lam
 	ridge_array[i]=ridge_bound_fro(lam, rank, I_user_fro, I_2, k)
-	graph_ridge_array[i]=graph_ridge_bound_fro(lam2, rank, lap_user_fro, lap_min, k)
-	graph_ridge_simple_array[i]=graph_ridge_bound_fro(lam2, rank, lam_user_fro, lap_min, k)
+	graph_ridge_array[i]=graph_ridge_bound_fro(lam2, rank, lap_user_fro, lap_2, k)
+	graph_ridge_simple_array[i]=graph_ridge_bound_fro(lam2, rank, lam_user_fro, lap_2, k)
 
-plt.figure()
-plt.plot(ridge_array, label='ridge')
-plt.plot(graph_ridge_array, label='graph ridge')
-plt.plot(graph_ridge_simple_array,label='graph ridge simple')
-plt.xlabel('sample size', fontsize=12)
-plt.ylabel('theoretical bound', fontsize=12)
-plt.title('same lambda', fontsize=12)
-plt.legend(loc=0,fontsize=12)
-plt.savefig(path+'lap_1_lap_lam_same_ridge_lam_theoretical_bound_ridge_gr_grs'+'.png', dpi=200)
-plt.show()
-
-plt.figure()
-plt.plot(ridge_array, label='ridge')
-plt.legend(loc=0,fontsize=12)
-plt.show()
-
-plt.figure()
-plt.plot(lam_list, label='lam')
+plt.figure(figsize=(5,5))
+plt.plot(ridge_array, label='Ridge')
+plt.plot(graph_ridge_array, label='Graph-Ridge')
 plt.legend(loc=0, fontsize=12)
+plt.xlabel('Sample size (m)', fontsize=12)
+plt.ylabel('Theoretical Bound', fontsize=12)
+plt.savefig(path+'01_lambda_ridge_vs_graph_ridge_noise_%s'%(noise_level)+'.png', dpi=200)
 plt.show()
 
 
-plt.figure()
-plt.plot(lam_list*lap_2, label='lam*lap_min')
-plt.legend(loc=0, fontsize=12)
-plt.show()
 
-plt.figure()
-plt.plot(lap_evalues, label='lap_evalues')
-plt.legend(loc=0, fontsize=12)
-plt.show()
-
-cluster_std_list=np.arange(0.001, 10, 0.1)
-ori_user_f, _=datasets.make_blobs(n_samples=user_num, n_features=dimension, centers=5, cluster_std=1, shuffle=False, random_state=2019)
-fro_list=np.zeros(len(cluster_std_list))
-lam_list=np.zeros(len(cluster_std_list))
-for i, cluster_std in enumerate(cluster_std_list):
-	user_f, _=datasets.make_blobs(n_samples=user_num, n_features=dimension, centers=5, cluster_std=cluster_std, shuffle=False, random_state=2019)
-	user_f=Normalizer().fit_transform(user_f)
-	adj=rbf_kernel(user_f)
-	lap=csgraph.laplacian(adj, normed=False)
-	lap_evalues, lap_evec=np.linalg.eig(lap)
-	Lambda=np.diag(lap_evalues)
-	lap_user_fro=np.linalg.norm(np.dot(lap, ori_user_f))
-	lam_user_fro=np.linalg.norm(np.dot(Lambda, ori_user_f))
-	fro_list[i]=lap_user_fro
-	lam_list[i]=lam_user_fro
-
-# plt.plot(cluster_std_list, lam_list, label='Lambda')
-plt.plot(cluster_std_list, fro_list, label='Lap')
-plt.legend(loc=0, fontsize=12)
-plt.title('cluster_std=1', fontsize=12)
-plt.xlabel('cluster_std', fontsize=12)
-plt.ylabel('||L theta||_F', fontsize=12)
-plt.savefig(path+'dot_product_of_lap_and_user_f'+'.png', dpi=200)
-plt.show()
 
 
 

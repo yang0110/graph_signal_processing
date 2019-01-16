@@ -35,13 +35,14 @@ def ridge_decomp(user_num, dimension, X, Y, lam):
 	return user_est 
 
 user_num=50
-item_num=100
-dimension=25
-noise_level=0
+item_num=200
+dimension=25 
+noise_level=0.25
 lam=1
+lam2=0.1
 
 user_f=np.random.normal(size=(user_num, dimension))
-user_f, _=datasets.make_blobs(n_samples=user_num, n_features=dimension, centers=5, cluster_std=200, shuffle=False, random_state=2019)
+# user_f, _=datasets.make_blobs(n_samples=user_num, n_features=dimension, centers=5, cluster_std=0.1, shuffle=False, random_state=2019)
 user_f=Normalizer().fit_transform(user_f)
 ori_adj=rbf_kernel(user_f)
 min_adj=np.min(ori_adj)
@@ -50,23 +51,14 @@ lap=csgraph.laplacian(ori_adj, normed=False)
 lap_evalues, lap_evectors=np.linalg.eig(lap)
 idx=np.argsort(lap_evalues)
 lap_evalues=lap_evalues[idx]
-lap_evectors=lap_evectors[idx]
-
-norm_array1=np.zeros((user_num))
-norm_array2=np.zeros((user_num))
+lap_evectors=lap_evectors.T[idx].T
+idx=np.zeros((user_num))
 for i in range(user_num):
-	norm_array1[i]=lap_evalues[i]*(np.linalg.norm(np.dot(lap_evectors[:,i], user_f))**2)
-	norm_array2[i]=lap_evalues[i]*(np.linalg.norm(user_f[i])**2)
+	idx[i]=np.argsort(lap_evectors[:,i])[-1]
 
-sum_1=np.sum(norm_array1)
-sum_2=np.sum(norm_array2)
+lap_evalues=lap_evalues[idx]
+lap_evectors=lap_evectors.T[idx].T
 
-plt.figure()
-plt.plot(norm_array1,'.', label='Q, U')
-plt.plot(norm_array2,'.', label='U_I')
-plt.title('sum_Lap=%s, \n sum_Lam=%s'%(sum_1, sum_2), fontsize=12)
-plt.legend(loc=0, fontsize=12)
-plt.show()
 
 item_f=np.random.normal(size=(item_num, dimension))
 item_f=Normalizer().fit_transform(item_f)
@@ -87,32 +79,57 @@ for i in range(item_num):
 	print('i', i)
 	x=item_f[:i+dimension,:]
 	y=noisy_signal[:, :i+dimension]
-	A=lam*lap 
+	A=lam2*lap 
 	B=np.dot(x.T,x)
 	C=np.dot(y,x)
 	graph_sly_res=scipy.linalg.solve_sylvester(A,B,C)
 	graph_sly_array[i]=np.linalg.norm(graph_sly_res-user_f, 'fro')
-	graph_decomp_res=graph_ridge_decomp(user_num, dimension, x, y, lam, lap_evalues)
+	graph_decomp_res=graph_ridge_decomp(user_num, dimension, x, y, lam2, lap_evalues)
 	graph_decomp_array[i]=np.linalg.norm(graph_decomp_res-user_f, 'fro')
-	ridge_decomp_res=ridge_decomp(user_num,dimension, x,y, lam)
-	ridge_decomp_array[i]=np.linalg.norm(ridge_decomp_res-user_f, 'fro')
-	diff[i]=np.linalg.norm(graph_sly_res-graph_decomp_res)
-	graph_sly_error_array[:, i]=np.linalg.norm(graph_sly_res-user_f, axis=1)
-	graph_decomp_error_array[:,i]=np.linalg.norm(graph_decomp_res-user_f, axis=1)
-	ridge_decomp_error_array[:,i]=np.linalg.norm(ridge_decomp_res-user_f, axis=1)
+	# ridge_decomp_res=ridge_decomp(user_num,dimension, x,y, lam)
+	# ridge_decomp_array[i]=np.linalg.norm(ridge_decomp_res-user_f, 'fro')
+	# diff[i]=np.linalg.norm(graph_sly_res-graph_decomp_res)
+	# graph_sly_error_array[:, i]=np.linalg.norm(graph_sly_res-user_f, axis=1)
+	# graph_decomp_error_array[:,i]=np.linalg.norm(graph_decomp_res-user_f, axis=1)
+	# ridge_decomp_error_array[:,i]=np.linalg.norm(ridge_decomp_res-user_f, axis=1)
 
 
 plt.figure()
 # plt.plot(ridge_decomp_array, label='ridge')
-plt.plot(graph_sly_array, 'k+-', markevery=0.05, label='graph-sly')
-plt.plot(graph_decomp_array, 'ro-', markevery=0.1, label='graph-decomp')
+plt.plot(graph_sly_array, 'k+-', markevery=0.05, label='graph-ridge')
+plt.plot(graph_decomp_array, 'ro-', markevery=0.1, label='graph-ridge simple')
 plt.legend(loc=0, fontsize=12)
 plt.ylabel('Learning Error', fontsize=12)
 plt.xlabel('Sample size', fontsize=12)
-plt.savefig(path+'graph_ridge_and_decomp_and_ridge'+'.png', dpi=300)
+plt.savefig(path+'graph_ridge_and_decomp_noise_%s'%(noise_level)+'.png', dpi=200)
 plt.show()
 
 
+top1_list=np.zeros(user_num)
+top2_list=np.zeros(user_num)
+ratio_list=np.zeros(user_num)
+t2_list=np.zeros(user_num)
+for i in range(user_num):
+	top_1=np.argsort(np.abs(lap_evectors[:,i]))[-1]
+	top_2=np.argsort(np.abs(lap_evectors[:,i]))[-2]
+	t2=np.argsort(ori_adj[i])[-2]
+	t2_list[i]=t2
+	print('top_1, top_2', lap_evectors[:,i][top_1], lap_evectors[:,i][top_2])
+	ratio=lap_evectors[:,i][top_1]/lap_evectors[:,i][top_2]
+	ratio_list[i]=ratio
+	top1_list[i]=top_1
+	top2_list[i]=top_2
+
+
+plt.plot(top1_list)
+plt.plot(t2_list)
+plt.show()
+
+# plt.plot(ratio_list)
+# plt.show()
+
+plt.plot(t2_list)
+plt.show()
 
 # labels=['1','2','3','4','5']
 # fig, (ax1, ax2)=plt.subplots(1,2)

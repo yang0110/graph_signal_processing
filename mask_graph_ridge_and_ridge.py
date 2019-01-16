@@ -7,7 +7,7 @@ from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
 import scipy
 import os 
-os.chdir('Documents/code/')
+os.chdir('Documents/research/code/')
 import datetime 
 import networkx as nx
 from utils import *
@@ -18,7 +18,7 @@ np.random.seed(seed=2019)
 
 user_num=50
 item_num=300
-dimension=5
+dimension=10
 noise_level=0.1
 
 I=np.identity(user_num)
@@ -104,5 +104,6 @@ plt.ylabel('Learning Error', fontsize=12)
 plt.title('user num=%s, noise=%s'%(user_num, noise_level), fontsize=12)
 plt.savefig(path+'mask_graph_ridge_vs_ridge_user_num_%s_noise_%s'%(user_num, noise_level)+'.png', dpi=300)
 plt.show()
+
 
 

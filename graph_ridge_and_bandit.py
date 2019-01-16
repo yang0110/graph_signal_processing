@@ -25,6 +25,7 @@ item_f=np.random.normal(size=(item_num, dimension))
 item_f=Normalizer().fit_transform(item_f)
 
 user_f=np.random.normal(size=(user_num, dimension))
+user_f, _=datasets.make_blobs(n_samples=user_num, n_features=dimension, centers=5, cluster_std=0.1, shuffle=False, random_state=2019)
 user_f=Normalizer().fit_transform(user_f)
 adj=rbf_kernel(user_f)
 min_adj=np.min(adj)
