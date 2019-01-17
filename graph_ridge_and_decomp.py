@@ -6,7 +6,7 @@ from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
 import scipy
 import os 
-os.chdir('Documents/research/code/')
+os.chdir('Documents/code/')
 import datetime 
 import networkx as nx
 from sklearn import datasets
@@ -35,14 +35,14 @@ def ridge_decomp(user_num, dimension, X, Y, lam):
 	return user_est 
 
 user_num=50
-item_num=200
-dimension=25 
+item_num=500
+dimension=10
 noise_level=0.25
-lam=1
+lam=0.1
 lam2=0.1
 
 user_f=np.random.normal(size=(user_num, dimension))
-# user_f, _=datasets.make_blobs(n_samples=user_num, n_features=dimension, centers=5, cluster_std=0.1, shuffle=False, random_state=2019)
+user_f, _=datasets.make_blobs(n_samples=user_num, n_features=dimension, centers=5, cluster_std=1, shuffle=False, random_state=2019)
 user_f=Normalizer().fit_transform(user_f)
 ori_adj=rbf_kernel(user_f)
 min_adj=np.min(ori_adj)
@@ -52,13 +52,6 @@ lap_evalues, lap_evectors=np.linalg.eig(lap)
 idx=np.argsort(lap_evalues)
 lap_evalues=lap_evalues[idx]
 lap_evectors=lap_evectors.T[idx].T
-idx=np.zeros((user_num))
-for i in range(user_num):
-	idx[i]=np.argsort(lap_evectors[:,i])[-1]
-
-lap_evalues=lap_evalues[idx]
-lap_evectors=lap_evectors.T[idx].T
-
 
 item_f=np.random.normal(size=(item_num, dimension))
 item_f=Normalizer().fit_transform(item_f)
@@ -70,10 +63,6 @@ noisy_signal=clear_signal+noise
 graph_sly_array=np.zeros(item_num)
 graph_decomp_array=np.zeros(item_num)
 ridge_decomp_array=np.zeros(item_num)
-diff=np.zeros(item_num)
-graph_sly_error_array=np.zeros((user_num, item_num))
-graph_decomp_error_array=np.zeros((user_num, item_num))
-ridge_decomp_error_array=np.zeros((user_num, item_num))
 
 for i in range(item_num):
 	print('i', i)
@@ -86,50 +75,20 @@ for i in range(item_num):
 	graph_sly_array[i]=np.linalg.norm(graph_sly_res-user_f, 'fro')
 	graph_decomp_res=graph_ridge_decomp(user_num, dimension, x, y, lam2, lap_evalues)
 	graph_decomp_array[i]=np.linalg.norm(graph_decomp_res-user_f, 'fro')
-	# ridge_decomp_res=ridge_decomp(user_num,dimension, x,y, lam)
-	# ridge_decomp_array[i]=np.linalg.norm(ridge_decomp_res-user_f, 'fro')
-	# diff[i]=np.linalg.norm(graph_sly_res-graph_decomp_res)
-	# graph_sly_error_array[:, i]=np.linalg.norm(graph_sly_res-user_f, axis=1)
-	# graph_decomp_error_array[:,i]=np.linalg.norm(graph_decomp_res-user_f, axis=1)
-	# ridge_decomp_error_array[:,i]=np.linalg.norm(ridge_decomp_res-user_f, axis=1)
+	ridge_decomp_res=ridge_decomp(user_num,dimension, x,y, lam)
+	ridge_decomp_array[i]=np.linalg.norm(ridge_decomp_res-user_f, 'fro')
 
 
 plt.figure()
-# plt.plot(ridge_decomp_array, label='ridge')
-plt.plot(graph_sly_array, 'k+-', markevery=0.05, label='graph-ridge')
-plt.plot(graph_decomp_array, 'ro-', markevery=0.1, label='graph-ridge simple')
+plt.plot(ridge_decomp_array[dimension:], label='ridge')
+plt.plot(graph_sly_array[dimension:], 'k+-', markevery=0.05, label='graph-ridge')
+plt.plot(graph_decomp_array[dimension:], 'ro-', markevery=0.1, label='graph-ridge simple')
 plt.legend(loc=0, fontsize=12)
 plt.ylabel('Learning Error', fontsize=12)
-plt.xlabel('Sample size', fontsize=12)
-plt.savefig(path+'graph_ridge_and_decomp_noise_%s'%(noise_level)+'.png', dpi=200)
+plt.xlabel('Sample size (m)', fontsize=12)
+plt.savefig(path+'graph_ridge_ridge_and_decomp_noise_%s'%(noise_level)+'.png', dpi=200)
 plt.show()
 
-
-top1_list=np.zeros(user_num)
-top2_list=np.zeros(user_num)
-ratio_list=np.zeros(user_num)
-t2_list=np.zeros(user_num)
-for i in range(user_num):
-	top_1=np.argsort(np.abs(lap_evectors[:,i]))[-1]
-	top_2=np.argsort(np.abs(lap_evectors[:,i]))[-2]
-	t2=np.argsort(ori_adj[i])[-2]
-	t2_list[i]=t2
-	print('top_1, top_2', lap_evectors[:,i][top_1], lap_evectors[:,i][top_2])
-	ratio=lap_evectors[:,i][top_1]/lap_evectors[:,i][top_2]
-	ratio_list[i]=ratio
-	top1_list[i]=top_1
-	top2_list[i]=top_2
-
-
-plt.plot(top1_list)
-plt.plot(t2_list)
-plt.show()
-
-# plt.plot(ratio_list)
-# plt.show()
-
-plt.plot(t2_list)
-plt.show()
 
 # labels=['1','2','3','4','5']
 # fig, (ax1, ax2)=plt.subplots(1,2)

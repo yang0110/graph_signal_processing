@@ -5,7 +5,7 @@ from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
 import scipy
 import os 
-os.chdir('Documents/research/code/')
+os.chdir('Documents/code/')
 import datetime 
 import networkx as nx
 from bandit_models import LinUCB, Graph_ridge
@@ -71,7 +71,7 @@ sigma_min=np.min(s)
 k=sigma_min/18
 
 user_f=np.random.normal(size=(user_num, dimension))
-user_f, _=datasets.make_blobs(n_samples=user_num, n_features=dimension, centers=5, cluster_std=0.1, shuffle=False, random_state=2019)
+# user_f, _=datasets.make_blobs(n_samples=user_num, n_features=dimension, centers=5, cluster_std=0.1, shuffle=False, random_state=2019)
 user_f=Normalizer().fit_transform(user_f)
 rank=np.linalg.matrix_rank(user_f)
 

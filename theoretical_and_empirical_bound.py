@@ -5,13 +5,13 @@ from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
 import scipy
 import os 
-os.chdir('Documents/research/code/')
+os.chdir('Documents/code/')
 import datetime 
 import networkx as nx
 from bandit_models import LinUCB, Graph_ridge
 from utils import create_networkx_graph
 from sklearn import datasets
-path='../results/Bound/'
+path='../results/Bound/both bound/'
 
 np.random.seed(2019)
 
@@ -60,7 +60,7 @@ def ridge_decomp(user_num, dimension, X, Y, lam):
 user_num=50
 dimension=10
 item_num=500
-noise_level=0.1
+noise_level=0.5
 d=2
 
 item_f=np.random.normal(size=(item_num, dimension))
@@ -99,6 +99,7 @@ I_2=I_ev[1]
 I_user_fro=np.linalg.norm(np.dot(I, user_f), 'fro')
 I_user_infty=np.linalg.norm(np.dot(I, user_f), np.inf)
 
+
 ridge_array=np.zeros(item_num)
 graph_ridge_array=np.zeros(item_num)
 graph_ridge_simple_array=np.zeros(item_num)
@@ -125,8 +126,8 @@ graph_sly_error_array=np.zeros((user_num, item_num))
 graph_decomp_error_array=np.zeros((user_num, item_num))
 ridge_decomp_error_array=np.zeros((user_num, item_num))
 
-lam=1
-lam2=0.01
+lam=0.3
+lam2=0.1
 for i in range(item_num):
 	print('i', i)
 	x=item_f[:i+dimension,:]
@@ -147,46 +148,42 @@ for i in range(item_num):
 
 
 plt.figure()
-plt.plot(ridge_array, label='ridge')
-plt.plot(graph_ridge_array, label='graph ridge')
-plt.plot(graph_ridge_simple_array,label='graph ridge simple')
-plt.plot(ridge_decomp_array, '+-',markevery=0.1,  label='ridge error')
-plt.plot(graph_sly_array, '+-', markevery=0.1, label='graph ridge error')
-plt.plot(graph_decomp_array, '+-',markevery=0.1,  label='graph ridge simple error')
+plt.plot(ridge_array[dimension:],'b', label='Ridge (Theoretical)')
+plt.plot(ridge_decomp_array[dimension:], 'b+-',markevery=0.1,  label='Ridge (Empirical)')
+plt.plot(graph_ridge_array[dimension:],'r', label='Graph-Ridge (Theoretical)')
+plt.plot(graph_sly_array[dimension:], 'r+-', markevery=0.1, label='Graph-Ridge (Empirical)')
+# plt.plot(graph_ridge_simple_array,label='graph ridge simple')
+# plt.plot(graph_decomp_array, '+-',markevery=0.1,  label='graph ridge simple error')
 plt.xlabel('sample size', fontsize=12)
 plt.ylabel('Bound and error', fontsize=12)
-plt.title('same lambda', fontsize=12)
-plt.legend(loc=0,fontsize=12)
-plt.savefig(path+'bound_vs_error_all'+'.png', dpi=200)
+plt.legend(loc=1,fontsize=10)
+plt.savefig(path+'smallest_lambda_bound_vs_error_all_user_num_noise_%s_%s'%(user_num, noise_level)+'.png', dpi=200)
 plt.show()
 
 
 plt.figure()
-plt.plot(ridge_array, label='ridge')
-plt.plot(ridge_decomp_array, '+-',markevery=0.1,  label='ridge error')
+plt.plot(ridge_array[dimension:], 'b', label='Theoretical error')
+plt.plot(ridge_decomp_array[dimension:], 'b+-',markevery=0.1,  label='Empirical Error')
 plt.xlabel('sample size', fontsize=12)
 plt.ylabel('Bound and error', fontsize=12)
-plt.title('same lambda', fontsize=12)
 plt.legend(loc=0,fontsize=12)
-plt.savefig(path+'bound_vs_error_ridge'+'.png', dpi=200)
+plt.savefig(path+'smallest_lambda_bound_vs_error_ridge_user_num_noise_%s_%s'%(user_num, noise_level)+'.png', dpi=200)
 plt.show()
 
 plt.figure()
-plt.plot(graph_ridge_array, label='graph ridge')
-plt.plot(graph_sly_array, '+-', markevery=0.1, label='graph ridge error')
+plt.plot(graph_ridge_array[dimension:], 'r', label='Theoretical Error')
+plt.plot(graph_sly_array[dimension:], 'r+-', markevery=0.1, label='Empirical Error')
 plt.xlabel('sample size', fontsize=12)
 plt.ylabel('Bound and error', fontsize=12)
-plt.title('same lambda', fontsize=12)
 plt.legend(loc=0,fontsize=12)
-plt.savefig(path+'bound_vs_error_graph_ridge'+'.png', dpi=200)
+plt.savefig(path+'smallest_lambda_bound_vs_error_graph_ridge_user_num_noise_%s_%s'%(user_num, noise_level)+'.png', dpi=200)
 plt.show()
 
-plt.figure()
-plt.plot(graph_ridge_simple_array,label='graph ridge simple')
-plt.plot(graph_decomp_array, '+-',markevery=0.1,  label='graph ridge simple error')
-plt.xlabel('sample size', fontsize=12)
-plt.ylabel('Bound and error', fontsize=12)
-plt.title('same lambda', fontsize=12)
-plt.legend(loc=0,fontsize=12)
-plt.savefig(path+'bound_vs_error_graph_ridge_simple'+'.png', dpi=200)
-plt.show()
+# plt.figure()
+# plt.plot(graph_ridge_simple_array,label='graph ridge simple')
+# plt.plot(graph_decomp_array, '+-',markevery=0.1,  label='graph ridge simple error')
+# plt.xlabel('sample size', fontsize=12)
+# plt.ylabel('Bound and error', fontsize=12)
+# plt.legend(loc=0,fontsize=12)
+# plt.savefig(path+'same_lambda_bound_vs_error_graph_ridge_simple'+'.png', dpi=200)
+# plt.show()

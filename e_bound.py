@@ -5,7 +5,7 @@ from sklearn.preprocessing import Normalizer
 from scipy.sparse import csgraph 
 import scipy
 import os 
-os.chdir('Documents/research/code/')
+os.chdir('Documents/code/')
 import datetime 
 import networkx as nx
 from bandit_models import LinUCB, Graph_ridge

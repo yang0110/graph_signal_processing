@@ -15,29 +15,6 @@ def ols(x,y):
 	beta=np.dot(np.dot(y,x), temp2)
 	return beta 
 
-# def ridge(x,y, _lambda, dimension):
-# 	cov=np.dot(x.T,x)
-# 	temp1=cov+_lambda*np.identity(dimension)
-# 	temp2=np.linalg.inv(temp1)
-# 	beta=np.dot(np.dot(y,x), temp2)
-# 	return beta 
-
-# Tikhonov
-def graph_ridge(user_num, item_num, dimension, lap, item_f, mask, noisy_signal, alpha):
-	u=cp.Variable((user_num, dimension))
-	l_signal=cp.multiply(cp.matmul(u, item_f),mask)
-	loss=cp.pnorm(noisy_signal-l_signal, p=2)**2
-	reg=cp.sum([cp.quad_form(u[:,d], lap) for d in range(dimension)])
-	#cons=[u<=1, u>=0]
-	alp=cp.Parameter(nonneg=True)
-	alp.value=alpha 
-	problem=cp.Problem(cp.Minimize(loss+alp*reg))
-	problem.solve()
-	sol=u.value 
-	return sol 
-
-
-
 def graph_ridge_iterative_model(item_f, noisy_signal, lap, beta_gb, dimension, user_list, item_list, user_dict, g_lambda):
 	user_nb=len(user_list)
 	item_nb=len(item_list)
@@ -163,15 +140,10 @@ def graph_ridge_iterative_model_no_mask(user_num, item_num, item_f, noisy_signal
 	beta_gb=u.copy()
 	return beta_gb
 
-	return sol 
-
-
 
 def normalized_trace(matrix, target_trace):
 	normed_matrix=target_trace*matrix/np.trace(matrix)
 	return normed_matrix
-
-
 
 
 def graph_ridge_mask_convex(user_num, dimension, lap, x, y, alpha, mask):
@@ -211,7 +183,6 @@ def graph_ridge_no_mask_convex(user_num, dimension, lap, x, y, alpha):
 	sol=u.value 
 	return sol 
 
-
 def ridge_no_mask_convex(user_num, dimension, I, x, y, alpha):
 	u=cp.Variable((user_num, dimension))
 	l_signal=cp.matmul(u,x.T)
@@ -223,19 +194,3 @@ def ridge_no_mask_convex(user_num, dimension, I, x, y, alpha):
 	problem.solve()
 	sol=u.value 
 	return sol 
-
-
-
-def create_networkx_graph(node_num, adj_matrix):
-	G=nx.Graph()
-	G.add_nodes_from(list(range(node_num)))
-	for i in range(node_num):
-		for j in range(node_num):
-			if adj_matrix[i,j]!=0:
-				G.add_edge(i,j,weight=adj_matrix[i,j])
-			else:
-				pass
-	edge_num=G.number_of_edges()
-	return G, edge_num
-
-	
